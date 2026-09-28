@@ -1,4 +1,9 @@
-data/recordings/
+data/recordings/*
+!data/recordings/.gitkeep
+data/incidents.json
+data/history.json
+data/models/*
+!data/models/.gitkeep
 .env
 __pycache__/
 .venv/

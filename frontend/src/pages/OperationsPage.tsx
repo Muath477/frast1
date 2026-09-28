@@ -1,24 +1,48 @@
+import { useMemo } from 'react';
 import { TopologyCanvas } from '@/components/topology/TopologyCanvas';
 import { DeviceInspector } from '@/components/topology/DeviceInspector';
 import { LinkInspector } from '@/components/topology/LinkInspector';
+import { DemoControls } from '@/components/demo/DemoControls';
+import { AlertStorm } from '@/components/demo/AlertStorm';
+import { MttdStopwatch } from '@/components/demo/MttdStopwatch';
+import { ServicesPanel } from '@/components/demo/ServicesPanel';
+import { IncidentPanel } from '@/components/incidents/IncidentPanel';
 import { useOps } from '@/store/useOps';
-
-async function saveLayout(positions: Record<string, { x: number; y: number }>) {
-  try {
-    await fetch('/api/topology/layout', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ positions }),
-    });
-  } catch {
-    // Backend may be offline
-  }
-}
+import { api } from '@/lib/api';
+import type { Focus } from '@/components/topology/DeviceNode';
 
 export function OperationsPage() {
   const topology = useOps((s) => s.topology);
   const selection = useOps((s) => s.selection);
   const select = useOps((s) => s.select);
+  const incidents = useOps((s) => s.incidents);
+  const demo = useOps((s) => s.demo);
+
+  const active = useMemo(() => {
+    const list = Object.values(incidents).filter((i) => i.status !== 'resolved');
+    return list.sort((a, b) => b.openedAt.localeCompare(a.openedAt))[0] ?? null;
+  }, [incidents]);
+
+  const focus = useMemo(() => {
+    const f: Record<string, Focus> = {};
+    if (!active) return f;
+    if (active.rootCause) {
+      f[active.rootCause.entityId] = 'cause';
+      for (const id of active.impactPath ?? []) {
+        if (id !== active.rootCause.entityId) f[id] = 'impact';
+      }
+    } else {
+      const members = active.members ?? active.evidence.map((e) => e.entityId);
+      for (const id of new Set(members)) f[id] = 'impact';
+    }
+    return f;
+  }, [active]);
+
+  const dnsSuppressed = Boolean(
+    active?.candidates?.some(
+      (c) => c.entityId === 'svc-web' && c.suppressedBy === 'svc-dns',
+    ),
+  );
 
   if (!topology) {
     return (
@@ -37,11 +61,22 @@ export function OperationsPage() {
     <div className="relative h-full w-full">
       <TopologyCanvas
         topology={topology}
+        focus={focus}
         onSelect={select}
-        onLayoutSaved={(positions) => void saveLayout(positions)}
+        onLayoutSaved={(positions) => void api.saveLayout(positions)}
       />
 
-      {selectedNode && (
+      <AlertStorm incident={active} />
+      <MttdStopwatch
+        injectedAt={demo.injectedAt ?? active?.timings.injectedAt}
+        analyzedAt={active?.timings.analyzedAt}
+      />
+      <ServicesPanel services={topology.services} dnsSuppressed={dnsSuppressed} />
+      <DemoControls />
+
+      <IncidentPanel incident={active} />
+
+      {selectedNode && !active && (
         <DeviceInspector
           device={selectedNode}
           services={topology.services}
@@ -49,7 +84,7 @@ export function OperationsPage() {
         />
       )}
 
-      {selectedLink && (
+      {selectedLink && !active && (
         <LinkInspector
           link={selectedLink}
           sourceLabel={

@@ -1,13 +1,13 @@
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { Shell } from '@/components/layout/Shell';
 import { OperationsPage } from '@/pages/OperationsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
+import { AuditPage } from '@/pages/AuditPage';
 import {
   IncidentsPage,
   DevicesPage,
   ServicesPage,
   AnalyticsPage,
-  AuditPage,
-  SettingsPage,
 } from '@/pages/Placeholders';
 
 export default function App() {

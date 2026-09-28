@@ -103,6 +103,8 @@ export interface Action {
   reason?: string;
   decidedAt?: string;
   executedAt?: string;
+  alternatives?: string[];
+  scenario?: string;
 }
 
 export interface Incident {
@@ -122,6 +124,7 @@ export interface Incident {
   explanation?: { en: string; ar: string; source: 'template' | 'llm' };
   action?: Action;
   rawAlertCount: number;
+  members?: string[];
   timings: {
     injectedAt?: string;
     firstAnomalyAt?: string;
