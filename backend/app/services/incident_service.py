@@ -96,6 +96,10 @@ class IncidentService:
     async def on_anomaly(self, anomaly):
         ts = anomaly.last_seen
         demo = self.demo_ref()
+        # During remediation / post-recover, ignore residual noise so a second
+        # incident cannot steal the UI before reset (E2E ×3 stability).
+        if demo.get("state") in ("remediating", "recovered"):
+            return
         pick = self.correlator.pick(anomaly.entity_id, ts, self._open_list())
         if pick is None:
             iid = f"INC-{next(self._seq):04d}"
