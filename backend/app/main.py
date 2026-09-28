@@ -3,11 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api import health, topology
+from app.services.topology_service import TopologyService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Day 3+: load topology, create tables, start simulator
+    app.state.topology = TopologyService()
     yield
 
 

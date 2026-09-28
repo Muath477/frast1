@@ -1,54 +1,61 @@
-import { useMemo } from 'react';
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  type Node,
-  type Edge,
-} from '@xyflow/react';
+import { useCallback, useState } from 'react';
+import { TopologyCanvas } from '@/components/topology/TopologyCanvas';
+import { DeviceInspector } from '@/components/topology/DeviceInspector';
+import { LinkInspector } from '@/components/topology/LinkInspector';
 import { staticTopology } from '@/lib/staticTopology';
+import type { Topology } from '@/lib/types';
+
+type Selection = { kind: 'node' | 'link'; id: string } | null;
+
+async function saveLayout(positions: Record<string, { x: number; y: number }>) {
+  try {
+    await fetch('/api/topology/layout', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ positions }),
+    });
+  } catch {
+    // Backend may be offline during pure FE work
+  }
+}
 
 export function OperationsPage() {
-  const nodes: Node[] = useMemo(
-    () =>
-      staticTopology.nodes.map((n) => ({
-        id: n.id,
-        position: n.position,
-        data: { label: `${n.label}\n${n.managementIp}` },
-        style: {
-          background: '#111831',
-          color: '#e2e8f0',
-          border: '1px solid #1f2a4d',
-          borderRadius: 8,
-          padding: 10,
-          fontSize: 12,
-          whiteSpace: 'pre-line' as const,
-          textAlign: 'center' as const,
-          minWidth: 110,
-        },
-      })),
-    [],
-  );
+  const [topology] = useState<Topology>(staticTopology);
+  const [selection, setSelection] = useState<Selection>(null);
 
-  const edges: Edge[] = useMemo(
-    () =>
-      staticTopology.links.map((l) => ({
-        id: l.id,
-        source: l.source,
-        target: l.target,
-        label: `${l.sourcePort} ↔ ${l.targetPort}`,
-        style: { stroke: '#22c55e' },
-        labelStyle: { fill: '#94a3b8', fontSize: 10 },
-      })),
-    [],
-  );
+  const onLayoutSaved = useCallback((positions: Record<string, { x: number; y: number }>) => {
+    void saveLayout(positions);
+  }, []);
+
+  const selectedNode =
+    selection?.kind === 'node' ? topology.nodes.find((n) => n.id === selection.id) : undefined;
+  const selectedLink =
+    selection?.kind === 'link' ? topology.links.find((l) => l.id === selection.id) : undefined;
 
   return (
-    <div className="h-full w-full">
-      <ReactFlow nodes={nodes} edges={edges} fitView proOptions={{ hideAttribution: true }}>
-        <Background color="#1f2a4d" gap={20} />
-        <Controls />
-      </ReactFlow>
+    <div className="relative h-full w-full">
+      <TopologyCanvas
+        topology={topology}
+        onSelect={setSelection}
+        onLayoutSaved={onLayoutSaved}
+      />
+
+      {selectedNode && (
+        <DeviceInspector
+          device={selectedNode}
+          services={topology.services}
+          onClose={() => setSelection(null)}
+        />
+      )}
+
+      {selectedLink && (
+        <LinkInspector
+          link={selectedLink}
+          sourceLabel={topology.nodes.find((n) => n.id === selectedLink.source)?.label ?? selectedLink.source}
+          targetLabel={topology.nodes.find((n) => n.id === selectedLink.target)?.label ?? selectedLink.target}
+          onClose={() => setSelection(null)}
+        />
+      )}
     </div>
   );
 }

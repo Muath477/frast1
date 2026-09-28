@@ -14,15 +14,19 @@ export const staticTopology: Topology = {
     status: 'healthy',
     metrics: {},
   })),
-  links: raw.links.map((l) => ({
-    ...l,
-    role: l.role as Topology['links'][number]['role'],
-    speedMbps: 1000,
-    status: 'healthy',
-    utilization: 0,
-    latencyMs: 0,
-    packetLoss: 0,
-  })),
+  links: raw.links.map((l) => {
+    const srcNode = raw.nodes.find((n) => n.id === l.source);
+    const srcIface = srcNode?.interfaces.find((i) => i.name === l.sourcePort);
+    return {
+      ...l,
+      role: l.role as Topology['links'][number]['role'],
+      speedMbps: srcIface?.speedMbps ?? 1000,
+      status: 'healthy' as const,
+      utilization: 0,
+      latencyMs: 0,
+      packetLoss: 0,
+    };
+  }),
   services: raw.services.map((s) => ({
     ...s,
     status: 'healthy',
