@@ -12,6 +12,10 @@ class LayoutBody(BaseModel):
 
 @router.get("/topology")
 def get_topology(request: Request):
+    # Prefer live snapshot (status + metrics) when state is available
+    snap_fn = getattr(request.app.state, "snapshot", None)
+    if callable(snap_fn):
+        return snap_fn()["topology"]
     return request.app.state.topology.snapshot()
 
 
@@ -30,3 +34,10 @@ def get_device(device_id: str, request: Request):
     if device is None:
         raise HTTPException(status_code=404, detail=f"unknown device: {device_id}")
     return device
+
+
+@router.get("/links/{link_id}/metrics")
+def get_link_metrics(link_id: str, request: Request, minutes: float = 5):
+    if link_id not in request.app.state.topology.links:
+        raise HTTPException(status_code=404, detail=f"unknown link: {link_id}")
+    return request.app.state.state.link_metrics(link_id, minutes)

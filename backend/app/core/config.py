@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     llm_enabled: bool = False
     anthropic_api_key: str = ""
     llm_model: str = "claude-haiku-4-5-20251001"
+    sim_paused: bool = False
 
 
 settings = Settings()

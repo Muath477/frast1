@@ -54,7 +54,6 @@ class StateStore:
         }
 
     def link_metrics(self, link_id: str, minutes: float = 5) -> dict:
-        cutoff = asyncio.get_event_loop().time()  # fallback; use wall clock below
         import time
 
         cutoff = time.time() - minutes * 60

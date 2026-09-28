@@ -1,7 +1,11 @@
-import { NavLink, Outlet } from 'react-router';
+import { Outlet } from 'react-router';
 import { Sidebar } from './Sidebar';
+import { TopBar } from './TopBar';
+import { useOpsSocket } from '@/hooks/useOpsSocket';
 
 export function Shell() {
+  useOpsSocket();
+
   return (
     <div
       className="h-full grid"
@@ -14,17 +18,9 @@ export function Shell() {
         <Sidebar />
       </aside>
 
-      <header className="flex items-center justify-between px-4 border-b border-noc-line bg-noc-panel">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold tracking-wide text-info">RootIQ</span>
-          <span className="text-xs text-slate-400">Operations</span>
-        </div>
-        <NavLink to="/settings" className="text-xs text-slate-400 hover:text-slate-200">
-          Settings
-        </NavLink>
-      </header>
+      <TopBar />
 
-      <main className="min-h-0 overflow-hidden">
+      <main className="relative min-h-0 overflow-hidden">
         <Outlet />
       </main>
 

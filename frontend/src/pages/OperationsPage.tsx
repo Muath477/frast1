@@ -1,11 +1,7 @@
-import { useCallback, useState } from 'react';
 import { TopologyCanvas } from '@/components/topology/TopologyCanvas';
 import { DeviceInspector } from '@/components/topology/DeviceInspector';
 import { LinkInspector } from '@/components/topology/LinkInspector';
-import { staticTopology } from '@/lib/staticTopology';
-import type { Topology } from '@/lib/types';
-
-type Selection = { kind: 'node' | 'link'; id: string } | null;
+import { useOps } from '@/store/useOps';
 
 async function saveLayout(positions: Record<string, { x: number; y: number }>) {
   try {
@@ -15,17 +11,22 @@ async function saveLayout(positions: Record<string, { x: number; y: number }>) {
       body: JSON.stringify({ positions }),
     });
   } catch {
-    // Backend may be offline during pure FE work
+    // Backend may be offline
   }
 }
 
 export function OperationsPage() {
-  const [topology] = useState<Topology>(staticTopology);
-  const [selection, setSelection] = useState<Selection>(null);
+  const topology = useOps((s) => s.topology);
+  const selection = useOps((s) => s.selection);
+  const select = useOps((s) => s.select);
 
-  const onLayoutSaved = useCallback((positions: Record<string, { x: number; y: number }>) => {
-    void saveLayout(positions);
-  }, []);
+  if (!topology) {
+    return (
+      <div className="flex h-full items-center justify-center text-slate-400">
+        Connecting to operations feed…
+      </div>
+    );
+  }
 
   const selectedNode =
     selection?.kind === 'node' ? topology.nodes.find((n) => n.id === selection.id) : undefined;
@@ -36,24 +37,28 @@ export function OperationsPage() {
     <div className="relative h-full w-full">
       <TopologyCanvas
         topology={topology}
-        onSelect={setSelection}
-        onLayoutSaved={onLayoutSaved}
+        onSelect={select}
+        onLayoutSaved={(positions) => void saveLayout(positions)}
       />
 
       {selectedNode && (
         <DeviceInspector
           device={selectedNode}
           services={topology.services}
-          onClose={() => setSelection(null)}
+          onClose={() => select(null)}
         />
       )}
 
       {selectedLink && (
         <LinkInspector
           link={selectedLink}
-          sourceLabel={topology.nodes.find((n) => n.id === selectedLink.source)?.label ?? selectedLink.source}
-          targetLabel={topology.nodes.find((n) => n.id === selectedLink.target)?.label ?? selectedLink.target}
-          onClose={() => setSelection(null)}
+          sourceLabel={
+            topology.nodes.find((n) => n.id === selectedLink.source)?.label ?? selectedLink.source
+          }
+          targetLabel={
+            topology.nodes.find((n) => n.id === selectedLink.target)?.label ?? selectedLink.target
+          }
+          onClose={() => select(null)}
         />
       )}
     </div>

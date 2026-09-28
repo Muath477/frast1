@@ -1,0 +1,5 @@
+$TTL 60
+@   IN SOA ns1.rootiq.lab. admin.rootiq.lab. ( 2026100101 60 60 600 60 )
+@   IN NS  ns1.rootiq.lab.
+ns1 IN A   10.10.20.10
+app IN A   10.10.20.10
