@@ -7,6 +7,7 @@
 - [x] Recovery monitor → `resolved` + timings + `runs` metrics (`correct=True`)
 - [x] `explain.py` grounded templates · `test_explain.py` **3 passed**
 - [x] ActionCard · RejectDialog · AuditPage · Settings engineer
+- [x] Timeline milestones (Injected→Recovered) · KPI MTTD/MTTR · edge stroke 1.2s
 - [x] sim full loop: reject → approve → recover ≤45s — **M3_OK**
 - [x] `pytest -q` **31** · `npm test` **2**
 - [ ] Live QoS on R1 / `m3.mp4` — INFRA deferred

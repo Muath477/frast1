@@ -136,7 +136,12 @@ export function IncidentPanel({ incident, onClose }: Props) {
               <section>
                 <h3 className="mb-1 text-xs uppercase tracking-wider text-slate-500">
                   Explanation{' '}
-                  <span className="normal-case text-slate-600">· {incident.explanation.source}</span>
+                  <span className="normal-case text-slate-500">
+                    ·{' '}
+                    {incident.explanation.source === 'llm'
+                      ? 'LLM · grounded ✓'
+                      : 'template'}
+                  </span>
                 </h3>
                 <p className="text-xs leading-relaxed text-slate-300">{incident.explanation.en}</p>
               </section>
