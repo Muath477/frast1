@@ -51,10 +51,11 @@ From `GET /api/runs` (9 sim runs) — details in [`docs/RESULTS.md`](docs/RESULT
 
 - Deck: [`docs/RootIQ_Pitch_Deck_Final.pptx`](docs/RootIQ_Pitch_Deck_Final.pptx) (numbers from RESULTS)
 - **Demo day runbook:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
-- Script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)
-- Judge Q&A: [`docs/QA_BANK.md`](docs/QA_BANK.md)
-- Rehearsal / drills: [`docs/REHEARSAL.md`](docs/REHEARSAL.md) · Bag: [`docs/BAG.md`](docs/BAG.md)
-- Backup video checklist: [`docs/demo-backup.md`](docs/demo-backup.md)
+- Script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) · Q&A: [`docs/QA_BANK.md`](docs/QA_BANK.md)
+- Risks · compressed plans · solo path: [`docs/RISKS.md`](docs/RISKS.md) · [`COMPRESSED_PLANS.md`](docs/COMPRESSED_PLANS.md) · [`SOLO_PATH.md`](docs/SOLO_PATH.md)
+- Rehearsal / bag: [`docs/REHEARSAL.md`](docs/REHEARSAL.md) · [`docs/BAG.md`](docs/BAG.md)
+- Backup video: [`docs/demo-backup.md`](docs/demo-backup.md)
+- Full docs index: [`docs/README.md`](docs/README.md)
 - Ship tag: **`v1.0`**
 
 ## Demo hotkeys
@@ -70,7 +71,7 @@ Shift+1 uplink · Shift+2 DNS · Shift+3 server spike · Shift+R reset · Shift+
 
 ## Docs
 
-Contracts · Architecture · Results · Progress (`docs/progress/`) · Full plan `RootIQ_Daily_Plan.md`
+Index: [`docs/README.md`](docs/README.md) · Full plan: `RootIQ_Daily_Plan.md` · Progress: `docs/progress/`
 
 ## Feature freeze
 
