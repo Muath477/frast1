@@ -15,6 +15,7 @@ for (const run of [1, 2, 3]) {
     await page.getByRole('button', { name: 'Confirm reject' }).click();
     await expect(page.getByTestId('timeline')).toContainText('Rejected');
 
+    await expect(page.getByRole('button', { name: 'Approve Remediation' })).toBeEnabled();
     await page.getByRole('button', { name: 'Approve Remediation' }).click();
     await expect(page.getByTestId('incident-status')).toHaveText(/resolved/i, { timeout: 90_000 });
   });
