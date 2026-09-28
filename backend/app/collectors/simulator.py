@@ -74,31 +74,34 @@ class Simulator:
                 return tgt, ramp
         return base, 4.0
 
+    async def step(self, tick: float = 1.0):
+        if self.paused:
+            return
+        self.elapsed += tick
+        now = datetime.now(timezone.utc)
+        for e, st, m, unit, base, noise in BASELINE:
+            tgt, ramp = self._target(e, m, base)
+            cur = self.current[(e, m)]
+            cur += (tgt - cur) * min(1.0, tick / ramp)
+            self.current[(e, m)] = cur
+            val = max(0.0, cur + random.gauss(0, noise))
+            if unit == "percent":
+                val = min(val, 100.0)
+            if unit == "bool":
+                val = 1.0 if cur >= 0.5 else 0.0
+            await self.pipeline.ingest(
+                Event(
+                    source_id=e,
+                    source_type=st,
+                    metric=m,
+                    value=round(val, 2),
+                    unit=unit,
+                    timestamp=now,
+                    metadata={"collector": "simulator"},
+                )
+            )
+
     async def run(self, tick: float = 1.0):
         while True:
             await asyncio.sleep(tick)
-            if self.paused:
-                continue
-            self.elapsed += tick
-            now = datetime.now(timezone.utc)
-            for e, st, m, unit, base, noise in BASELINE:
-                tgt, ramp = self._target(e, m, base)
-                cur = self.current[(e, m)]
-                cur += (tgt - cur) * min(1.0, tick / ramp)
-                self.current[(e, m)] = cur
-                val = max(0.0, cur + random.gauss(0, noise))
-                if unit == "percent":
-                    val = min(val, 100.0)
-                if unit == "bool":
-                    val = 1.0 if cur >= 0.5 else 0.0
-                await self.pipeline.ingest(
-                    Event(
-                        source_id=e,
-                        source_type=st,
-                        metric=m,
-                        value=round(val, 2),
-                        unit=unit,
-                        timestamp=now,
-                        metadata={"collector": "simulator"},
-                    )
-                )
+            await self.step(tick)

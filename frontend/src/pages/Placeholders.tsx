@@ -22,10 +22,6 @@ export function AnalyticsPage() {
   return <Placeholder title="Analytics" />;
 }
 
-export function AuditPage() {
-  return <Placeholder title="Automation / Audit" />;
-}
-
 export function SettingsPage() {
   return <Placeholder title="Settings" />;
 }

@@ -1,0 +1,122 @@
+import { useState } from 'react';
+import type { Action } from '@/lib/types';
+import clsx from 'clsx';
+import { api } from '@/lib/api';
+import { RejectDialog } from './RejectDialog';
+
+interface Props {
+  action: Action & { alternatives?: string[]; scenario?: string };
+  engineer: string;
+  incidentStatus: string;
+  needsInvestigation?: boolean;
+}
+
+export function ActionCard({ action, engineer, incidentStatus, needsInvestigation }: Props) {
+  const [busy, setBusy] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const riskColor =
+    action.riskLevel === 'low'
+      ? 'bg-ok/20 text-ok'
+      : action.riskLevel === 'medium'
+        ? 'bg-warn/20 text-warn'
+        : 'bg-crit/20 text-crit';
+
+  const status = action.approvalStatus;
+  const pending = status === 'pending';
+
+  const approve = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      await api.approve(action.id, engineer || 'Engineer');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reject = async (reason: string) => {
+    setError(null);
+    setBusy(true);
+    try {
+      await api.reject(action.id, engineer || 'Engineer', reason);
+      setRejectOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (incidentStatus === 'resolved') {
+    return (
+      <div className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-3 text-sm text-ok">
+        Recovered ★ — remediation complete. Lab metrics returned to baseline.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-noc-line bg-noc-bg/50 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs leading-relaxed text-slate-200">{action.description}</p>
+        <span className={clsx('shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase', riskColor)}>
+          {action.riskLevel}
+        </span>
+      </div>
+
+      {action.alternatives && action.alternatives.length > 0 && (
+        <ul className="list-disc pl-4 text-[11px] text-slate-500">
+          {action.alternatives.map((a) => (
+            <li key={a}>{a}</li>
+          ))}
+        </ul>
+      )}
+
+      <p className="text-[11px] italic text-slate-500">
+        No change is applied without engineer approval
+      </p>
+
+      {needsInvestigation && (
+        <p className="text-[11px] text-warn">Low confidence — approve only after review.</p>
+      )}
+
+      {pending && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void approve()}
+            className="flex-1 rounded-lg bg-ok/90 px-3 py-2 text-xs font-semibold text-black hover:bg-ok disabled:opacity-50"
+          >
+            {busy ? 'Executing…' : 'Approve Remediation'}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setRejectOpen(true)}
+            className="rounded-lg border border-noc-line px-3 py-2 text-xs text-slate-300 hover:bg-white/5"
+          >
+            Reject
+          </button>
+        </div>
+      )}
+
+      {(status === 'approved' || status === 'executed' || busy) && incidentStatus !== 'resolved' && (
+        <div className="text-xs text-info">
+          {status === 'executed' ? 'Executed ✓ — Recovering…' : 'Executing on R1…'}
+        </div>
+      )}
+
+      {status === 'failed' && <div className="text-xs text-crit">Execution failed</div>}
+      {error && <div className="text-[11px] text-crit">{error}</div>}
+
+      {rejectOpen && (
+        <RejectDialog onCancel={() => setRejectOpen(false)} onConfirm={(r) => void reject(r)} />
+      )}
+    </div>
+  );
+}
