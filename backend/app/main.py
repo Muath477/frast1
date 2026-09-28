@@ -19,6 +19,8 @@ from app.services.pipeline import Pipeline
 from app.services.recorder import Recorder
 from app.services.state_store import StateStore
 from app.services.topology_service import TopologyService
+from app.db import Base, engine
+from app.db.persist import upsert_incident
 
 
 def _persist_path() -> Path:
@@ -41,6 +43,10 @@ def make_persist(_holder: dict):
         existing = [i for i in existing if i["id"] != blob["id"]]
         existing.insert(0, blob)
         path.write_text(json.dumps(existing[:100], indent=2), encoding="utf-8")
+        try:
+            upsert_incident(inc)
+        except Exception:
+            pass
 
     return persist
 
@@ -89,6 +95,7 @@ async def recovery_loop(app: FastAPI):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(engine)
     topo = TopologyService()
     state = StateStore(topo)
     detector = Detector()

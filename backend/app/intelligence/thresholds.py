@@ -12,6 +12,7 @@ THRESHOLDS: dict[str, tuple[float, float, str]] = {
     "dns_success_rate": (95, 50, "down"),
     "dns_latency_ms": (100, 500, "up"),
     "poll_timeout": (0.5, 0.5, "up"),
+    "syslog_link_down": (0.5, 0.5, "up"),
 }
 
 
