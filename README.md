@@ -6,20 +6,50 @@
 
 Venture X Hackathon — Infrastructure & Cloud · Mode: **sim-first** (live EVE-NG additive)
 
-## Quick start (3 commands)
+## كيف تشغّل المشروع / How to run
+
+### أول مرة فقط (once)
 
 ```powershell
-# 1) Backend (sim)
-cd backend; .\.venv\Scripts\Activate.ps1; $env:ROOTIQ_MODE='sim'; uvicorn app.main:app --host 127.0.0.1 --port 8000
+cd e:\frast1\backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 
-# 2) Frontend (other terminal)
-cd frontend; npm run dev
-
-# 3) Open UI
-start http://localhost:5173
+cd e:\frast1\frontend
+npm install
 ```
 
-API health: http://localhost:8000/api/health · UI: http://localhost:5173
+### كل مرة (every time) — طرفيتان
+
+**1) Backend (sim)**
+```powershell
+cd e:\frast1\backend
+.\.venv\Scripts\Activate.ps1
+$env:ROOTIQ_MODE = 'sim'
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+**2) Frontend** (طرفية ثانية)
+```powershell
+cd e:\frast1\frontend
+npm run dev
+```
+
+**3) افتح المتصفح**
+- UI: http://localhost:5173
+- API health: http://localhost:8000/api/health
+
+### ديمو سريع
+`Shift+P` Presenter · `Shift+1` ازدحام · Reject / Approve · `Shift+R` إعادة
+
+### Docker (اختياري)
+```powershell
+cd e:\frast1
+docker compose up -d --build
+# UI http://localhost:8080  ·  API http://localhost:8000
+./scripts/preflight.sh
+```
 
 ## Architecture
 
