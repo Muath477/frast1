@@ -4,6 +4,8 @@
 |---|---|
 | [`CONTRACTS.md`](CONTRACTS.md) | Frozen API / event contracts |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Mermaid + 30s verbal |
+| [`BLUEPRINT.md`](BLUEPRINT.md) | المخطط الشامل: الصورة الكبيرة، المراحل، خلف الكواليس، مطابقة المواصفة، الفجوات، خارطة الطريق |
+| [`AGENTS.md`](AGENTS.md) | الوكلاء الـ14: فائدة كل وكيل، ما يحتاجه، ضوابطه، التدهور الآمن، الـAPI، الاختبارات |
 | [`RESULTS.md`](RESULTS.md) | Measured pitch numbers |
 | [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) | 5-minute demo (Appendix أ) |
 | [`QA_BANK.md`](QA_BANK.md) | Judge Q&A (Appendix ب) |

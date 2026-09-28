@@ -5,7 +5,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from app.api import actions, demo, events, health, incidents, topology, ws
+from app.agents.runtime import AgentRuntime
+from app.api import actions, agents as agents_api, demo, events, health, incidents, topology, ws
 from app.collectors.simulator import Simulator
 from app.core.config import settings
 from app.intelligence.correlate import Correlator
@@ -111,6 +112,10 @@ async def lifespan(app: FastAPI):
         "injectedAt": None,
     }
 
+    agents = AgentRuntime(
+        graph=graph, history=history, topology=topo, correlator=correlator, detector=detector, audit=audit
+    )
+
     holder: dict = {}
     incidents_svc = IncidentService(
         correlator,
@@ -119,6 +124,7 @@ async def lifespan(app: FastAPI):
         history=history,
         persist=make_persist(holder),
         topology=topo,
+        agents=agents,
     )
 
     path = _persist_path()
@@ -145,10 +151,19 @@ async def lifespan(app: FastAPI):
             st.explanation = blob.get("explanation")
             st.action = blob.get("action")
             st.needs_investigation = blob.get("needsInvestigation", True)
+            st.acknowledged_by = blob.get("acknowledgedBy")
+            st.acknowledged_at = blob.get("acknowledgedAt")
+            st.verification = blob.get("verification")
+            st.knowledge = blob.get("knowledge")
             if st.status != "resolved":
                 incidents_svc.open[st.id] = st
             else:
                 incidents_svc.history_list.append(st)
+        # Persisted ids must not be reused after a restart (traces, postmortems and the knowledge
+        # index are all keyed by incident id).
+        incidents_svc.resume_sequence(
+            list(incidents_svc.open) + [h.id for h in incidents_svc.history_list]
+        )
 
     action_svc = ActionService(
         incidents_svc,
@@ -157,11 +172,14 @@ async def lifespan(app: FastAPI):
         history=history,
         simulator_ref=lambda: getattr(app.state, "simulator", None),
         audit=audit,
+        agents=agents,
     )
     incidents_svc.actions = action_svc
+    agents.bind(state=state)
 
     pipeline = Pipeline(topo, state, detector, incidents_svc)
     pipeline.recorder = Recorder()
+    pipeline.agents = agents
 
     app.state.topology = topo
     app.state.state = state
@@ -169,6 +187,7 @@ async def lifespan(app: FastAPI):
     app.state.incidents = incidents_svc
     app.state.actions = action_svc
     app.state.audit = audit
+    app.state.agents = agents
     app.state.history = history
     app.state.pipeline = pipeline
     app.state.demo = demo_state
@@ -176,6 +195,8 @@ async def lifespan(app: FastAPI):
     app.state.tasks = [
         asyncio.create_task(state.flush_loop()),
         asyncio.create_task(recovery_loop(app)),
+        # build the RAG index in the background so the first incident is not slowed down
+        asyncio.create_task(asyncio.to_thread(agents.knowledge.reindex)),
     ]
 
     if settings.rootiq_mode == "sim":
@@ -209,4 +230,5 @@ app.include_router(events.router, prefix="/api")
 app.include_router(demo.router, prefix="/api")
 app.include_router(incidents.router, prefix="/api")
 app.include_router(actions.router, prefix="/api")
+app.include_router(agents_api.router, prefix="/api")
 app.include_router(ws.router)

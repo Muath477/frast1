@@ -13,9 +13,19 @@ class Settings(BaseSettings):
     lab_agent_token: str = "change-me-agent"
     record_events: bool = False
     llm_enabled: bool = False
+    llm_provider: str = "anthropic"  # anthropic | gemini | groq
+    llm_model: str = ""  # empty -> provider default (see app/llm/client.py)
     anthropic_api_key: str = ""
-    llm_model: str = "claude-haiku-4-5-20251001"
+    gemini_api_key: str = ""
+    groq_api_key: str = ""
     sim_paused: bool = False
+    # Multi-agent layer
+    rootiq_execution_enabled: bool = True  # False -> live-lab remediation becomes a dry run
+    agent_timeout_s: float = 8.0
+    guardrail_max_executions: int = 5  # per 5 minutes
+    verify_grace_s: float = 30.0  # after the 15 s recovery clock, wait up to this long for the playbook criteria
+    rag_min_score: float = 0.10
+    kb_root: str = ""  # folder holding docs/ and lab/configs (auto-detected when empty)
 
 
 settings = Settings()

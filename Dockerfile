@@ -15,6 +15,8 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app ./app
 COPY configs ./configs
+COPY docs ./docs
+COPY lab/configs ./lab/configs
 COPY --from=febuild /fe/dist /usr/share/nginx/html
 COPY deploy/nginx-allinone.conf /etc/nginx/sites-available/default
 RUN rm -f /etc/nginx/sites-enabled/default \

@@ -3,6 +3,7 @@ import type { Action } from '@/lib/types';
 import clsx from 'clsx';
 import { api } from '@/lib/api';
 import { RejectDialog } from './RejectDialog';
+import { PlanDetails } from './PlanDetails';
 
 interface Props {
   action: Action & { alternatives?: string[]; scenario?: string };
@@ -76,6 +77,8 @@ export function ActionCard({ action, engineer, incidentStatus, needsInvestigatio
         </ul>
       )}
 
+      {action.plan && <PlanDetails plan={action.plan} warnings={action.guardrailWarnings} />}
+
       <p className="text-[11px] italic text-slate-500">
         No change is applied without engineer approval
       </p>
@@ -105,12 +108,17 @@ export function ActionCard({ action, engineer, incidentStatus, needsInvestigatio
         </div>
       )}
 
-      {(status === 'approved' || status === 'executed' || busy) && incidentStatus !== 'resolved' && (
+      {(status === 'approved' || status === 'executed' || busy) && !action.dryRun && incidentStatus !== 'resolved' && (
         <div className="text-xs text-info">
           {status === 'executed' ? 'Executed ✓ — Recovering…' : 'Executing on R1…'}
         </div>
       )}
 
+      {action.dryRun && (
+        <div className="text-xs text-warn">
+          Dry run — execution is switched off, your approval was recorded but nothing was changed.
+        </div>
+      )}
       {status === 'failed' && <div className="text-xs text-crit">Execution failed</div>}
       {error && <div className="text-[11px] text-crit">{error}</div>}
 

@@ -42,3 +42,20 @@ Badge on the UI always shows the active mode.
 | Explain | `intelligence/explain` | Grounded EN/AR (LLM optional, numbers must exist in evidence) |
 | Act | `services/action_service` | Reject/approve → whitelist only |
 | UI | `frontend/src` | Topology, evidence, timeline, analytics |
+
+## Multi-agent layer (added on branch `my-edits`)
+
+14 specialised agents (12 fully deterministic) run the investigation and stop at a human gate. Full detail: [`AGENTS.md`](AGENTS.md); the big picture and spec compliance: [`BLUEPRINT.md`](BLUEPRINT.md).
+
+```mermaid
+flowchart LR
+  EV[event] --> TEL[telemetry] --> DET[detection] --> COR[correlation] --> RCA[rca]
+  TOP[topology] --> RCA
+  RCA --> EXP[explanation] & KNO[knowledge / RAG]
+  RCA --> REM[remediation] --> GR[guardrail]
+  GR --> H{{engineer approves}} --> GR2[guardrail] --> EXE[execution] --> VER[verification] --> LRN[learning]
+  LRN --> KNO --> COP[copilot - read only]
+  ORC[[orchestrator: order · timeouts · fallbacks · trace]] -.-> RCA
+```
+
+Rules: advisors never execute · only a named human can approve (`system`/`agent:*` get 403) · every optional agent has a deterministic fallback · LLM is optional and number-grounded.
