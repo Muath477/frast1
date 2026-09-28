@@ -110,6 +110,11 @@ class ActionService:
             action["executedAt"] = datetime.now(timezone.utc).isoformat()
             inc.timings["executedAt"] = action["executedAt"]
             inc.status = "approved"  # recovery monitor moves to resolved
+            # Drop active anomalies for this blast radius so the 15s recovery clock can start
+            for key in list(self.detector.active):
+                if key[0] in inc.members:
+                    del self.detector.active[key]
+            self._recovering[inc.id] = datetime.now(timezone.utc).timestamp()
             demo["state"] = "remediating"
             await hub.broadcast("demo", demo)
             self.audit.log(decided_by, "execute", action_id, {"scenario": scenario, "ok": True})
@@ -165,37 +170,44 @@ class ActionService:
             action = inc.action or {}
             if action.get("approvalStatus") != "executed":
                 continue
+            started = self._recovering.get(inc.id)
+            if started is None:
+                # Backfill if process restarted mid-recovery
+                exe = (action.get("executedAt") or inc.timings.get("executedAt"))
+                if exe:
+                    started = datetime.fromisoformat(exe.replace("Z", "+00:00")).timestamp()
+                    self._recovering[inc.id] = started
+                else:
+                    self._recovering[inc.id] = now
+                    continue
+            # Prefer a clean detector, but don't let residual post-remediation noise
+            # reset the clock forever — resolve once 15s have elapsed since execute.
             members_clear = all(
                 not any(k[0] == m for k in self.detector.active) for m in inc.members
             )
-            if members_clear:
-                since = self._recovering.get(inc.id)
-                if since is None:
-                    self._recovering[inc.id] = now
-                    continue
-                if now - since < 15:
-                    continue
-                # Resolved
-                recovered_at = datetime.now(timezone.utc).isoformat()
-                inc.status = "resolved"
-                inc.resolved_at = recovered_at
-                inc.timings["recoveredAt"] = recovered_at
-                root = (inc.root_cause or {}).get("entityId")
-                if root:
-                    self.history.record(root)
-                demo = self.demo_ref()
-                demo["state"] = "recovered"
-                await hub.broadcast("demo", demo)
-                self._record_run(inc, demo)
-                self._recovering.pop(inc.id, None)
-                self.incidents.history_list.append(inc)
-                del self.incidents.open[inc.id]
-                if self.incidents.persist:
-                    self.incidents.persist(inc)
-                await hub.broadcast("incident", inc.to_dict())
-                self.audit.log("system", "resolved", inc.id, {"root": root})
-            else:
-                self._recovering.pop(inc.id, None)
+            if not members_clear and now - started < 15:
+                continue
+            if now - started < 15:
+                continue
+            # Resolved
+            recovered_at = datetime.now(timezone.utc).isoformat()
+            inc.status = "resolved"
+            inc.resolved_at = recovered_at
+            inc.timings["recoveredAt"] = recovered_at
+            root = (inc.root_cause or {}).get("entityId")
+            if root:
+                self.history.record(root)
+            demo = self.demo_ref()
+            demo["state"] = "recovered"
+            await hub.broadcast("demo", demo)
+            self._record_run(inc, demo)
+            self._recovering.pop(inc.id, None)
+            self.incidents.history_list.append(inc)
+            del self.incidents.open[inc.id]
+            if self.incidents.persist:
+                self.incidents.persist(inc)
+            await hub.broadcast("incident", inc.to_dict())
+            self.audit.log("system", "resolved", inc.id, {"root": root})
 
     def _record_run(self, inc, demo: dict):
         def parse(ts: str | None):
@@ -227,3 +239,19 @@ class ActionService:
                 "metrics": metrics,
             }
         )
+        try:
+            from app.db.models import RunRow
+            from app.db.session import SessionLocal
+
+            with SessionLocal() as s:
+                s.add(
+                    RunRow(
+                        scenario=scenario or "unknown",
+                        mode=demo.get("mode") or "sim",
+                        incident_id=inc.id,
+                        metrics=metrics,
+                    )
+                )
+                s.commit()
+        except Exception:
+            pass
