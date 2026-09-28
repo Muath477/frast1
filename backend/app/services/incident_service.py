@@ -210,6 +210,33 @@ class IncidentService:
         if inc.status in ("open", "investigating"):
             inc.status = "recommendation_ready"
 
+        # Optional Isolation Forest evidence (supporting only — never decides root)
+        try:
+            from app.intelligence.anomaly import MultivariateScorer
+
+            metrics_map: dict[str, dict[str, float]] = {}
+            for a in inc.anomalies:
+                metrics_map.setdefault(a.entity_id, {})[a.metric] = a.value
+            mv = MultivariateScorer().score(metrics_map)
+            if mv is not None and mv > 0.6:
+                inc.evidence.append(
+                    {
+                        "id": f"ev-mv-{len(inc.evidence)+1}",
+                        "entityId": root.entity_id,
+                        "metric": "multivariate_score",
+                        "value": round(mv, 2),
+                        "baseline": 0.0,
+                        "unit": "",
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                        "text": (
+                            f"Multivariate anomaly score {mv:.2f} "
+                            "(Isolation Forest trained on 15 min of healthy lab data)"
+                        ),
+                    }
+                )
+        except Exception:
+            pass
+
         # Build explain facts from anomalies
         facts = self._facts(inc, root.entity_id, conf)
         kind = _kind_for(root.entity_id)
