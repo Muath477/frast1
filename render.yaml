@@ -1,0 +1,12 @@
+# Render / Railway — one public URL for RootIQ (UI + API + WS)
+services:
+  - type: web
+    name: rootiq
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: ROOTIQ_MODE
+        value: sim
