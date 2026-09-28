@@ -131,6 +131,7 @@ export interface Incident {
     detectedAt?: string;
     analyzedAt?: string;
     decidedAt?: string;
+    rejectedAt?: string;
     executedAt?: string;
     recoveredAt?: string;
   };

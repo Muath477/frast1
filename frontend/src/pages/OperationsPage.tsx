@@ -22,9 +22,21 @@ export function OperationsPage() {
   const demo = useOps((s) => s.demo);
 
   const active = useMemo(() => {
-    const list = Object.values(incidents).filter((i) => i.status !== 'resolved');
-    return list.sort((a, b) => b.openedAt.localeCompare(a.openedAt))[0] ?? null;
-  }, [incidents]);
+    const list = Object.values(incidents);
+    const open = list
+      .filter((i) => i.status !== 'resolved')
+      .sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+    if (open[0]) return open[0];
+    // Keep last resolved visible after recovery (presenter + e2e)
+    if (demo.state === 'recovered') {
+      return (
+        list
+          .filter((i) => i.status === 'resolved')
+          .sort((a, b) => (b.resolvedAt ?? '').localeCompare(a.resolvedAt ?? ''))[0] ?? null
+      );
+    }
+    return null;
+  }, [incidents, demo.state]);
 
   const focus = useMemo(() => {
     const f: Record<string, Focus> = {};
@@ -77,7 +89,7 @@ export function OperationsPage() {
       <ServicesPanel services={topology.services} dnsSuppressed={dnsSuppressed} />
       <DemoControls />
 
-      {!active && (
+      {!active && demo.state !== 'recovered' && (
         <div className="pointer-events-none absolute start-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-ok/30 bg-ok/10 px-4 py-2 text-sm text-ok">
           <ShieldCheck className="size-4" />
           {t('incident.empty')}

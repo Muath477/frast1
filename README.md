@@ -42,4 +42,29 @@ npm run dev
 - Progress: `docs/progress/`
 
 ## Demo hotkeys
-- Shift+1 uplink congestion · Shift+2 DNS failure · Shift+3 server spike · Shift+R reset
+- Shift+1 uplink congestion · Shift+2 DNS failure · Shift+3 server spike · Shift+R reset · Shift+P presenter
+
+## Docker (optional)
+```bash
+docker compose up -d --build
+# UI http://localhost:8080  API http://localhost:8000
+./scripts/preflight.sh
+```
+
+## E2E (sim)
+```bash
+# backend already on :8000 with ROOTIQ_MODE=sim
+cd frontend && npx playwright install chromium
+npm run test:e2e
+```
+
+## EVE-NG golden snapshot (when lab is healthy)
+```bash
+# On EVE host — stop nodes first, then:
+# cp -a /opt/unetlab/tmp/0/<lab-uuid>/ /root/rootiq-golden/
+# Restore: cp -a /root/rootiq-golden/. /opt/unetlab/tmp/0/<lab-uuid>/
+```
+**Boot order:** R1 → SW1/SW2 (wait ~90s) → APP-01 → COLLECTOR-01 → `systemctl status rootiq-collector rootiq-lab-agent`
+
+## Feature freeze
+After Day 11 / `v1.0-rc1`: no new features — fixes only, reviewed by two teammates.
