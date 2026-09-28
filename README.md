@@ -1,70 +1,74 @@
 ﻿# RootIQ
 
-Venture X Hackathon — Infrastructure & Cloud
+**Find the cause before it becomes an outage** — alert storm → one incident → evidence-backed RCA → engineer approve-only remediation in under 60 seconds.
 
-**Demo day:** TBD (confirm in team kickoff)  
-**Kickoff / Day 0:** 2026-09-28  
-**Mode:** Simulator-first (small team). Live EVE-NG lab is additive.
+![RootIQ demo](docs/deck/rootiq-demo.gif)
 
-**Promise:** From dozens of scattered alerts to one incident, evidence-backed root cause, and an action that executes only with engineer approval — in under 60 seconds.
+Venture X Hackathon — Infrastructure & Cloud · Mode: **sim-first** (live EVE-NG additive)
 
-## Roles
-- FE: Ahmed
-- BE / AI / INFRA / Presenter / Timekeeper: TBD
+## Quick start (3 commands)
 
-## Stack
-- Frontend: Vite + React 19 + TypeScript + Tailwind CSS v4 + React Flow
-- Backend: FastAPI + WebSocket (+ PostgreSQL when Docker available)
-- Modes: `ROOTIQ_MODE=sim` (default) | `live`
-
-## Quick start
 ```powershell
-# Backend
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+# 1) Backend (sim)
+cd backend; .\.venv\Scripts\Activate.ps1; $env:ROOTIQ_MODE='sim'; uvicorn app.main:app --host 127.0.0.1 --port 8000
 
-# Frontend (another terminal)
-cd frontend
-npm install
-npm run dev
+# 2) Frontend (other terminal)
+cd frontend; npm run dev
+
+# 3) Open UI
+start http://localhost:5173
 ```
 
-- API: http://localhost:8000/api/health
-- UI: http://localhost:5173
+API health: http://localhost:8000/api/health · UI: http://localhost:5173
 
-## Docs
-- Contracts (frozen): `docs/CONTRACTS.md`
-- Daily rhythm: `docs/RHYTHM.md`
-- Full plan: `RootIQ_Daily_Plan.md`
-- Progress: `docs/progress/`
+## Architecture
+
+Lab collector → FastAPI ingest → detect/correlate/RCA/explain → WebSocket UI → approve → whitelisted lab agent.
+
+Full Mermaid + 30s verbal: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+
+## Modes
+
+| | |
+|---|---|
+| `ROOTIQ_MODE=sim` | In-process simulator (default, offline, backup) |
+| `ROOTIQ_MODE=live` | EVE-NG + COLLECTOR-01 + lab agent |
+
+UI badge always shows the active mode.
+
+## Measured results
+
+From `GET /api/runs` (9 sim runs) — details in [`docs/RESULTS.md`](docs/RESULTS.md):
+
+| Metric | Target | Measured |
+|---|---|---|
+| Time to RCA | &lt; 60 s | **12.3 s** |
+| Top-1 root | Top 3 | **9/9** |
+| Noise reduction | 30% | **96.3%** |
+| Human approval | 100% | **100%** |
+
+## Pitch & demo
+
+- Deck: [`docs/RootIQ_Pitch_Deck_Final.pptx`](docs/RootIQ_Pitch_Deck_Final.pptx) (numbers from RESULTS)
+- Script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)
+- Judge Q&A: [`docs/QA_BANK.md`](docs/QA_BANK.md)
+- Backup video checklist: [`docs/demo-backup.md`](docs/demo-backup.md)
 
 ## Demo hotkeys
-- Shift+1 uplink congestion · Shift+2 DNS failure · Shift+3 server spike · Shift+R reset · Shift+P presenter
 
-## Docker (optional)
-```bash
-docker compose up -d --build
-# UI http://localhost:8080  API http://localhost:8000
-./scripts/preflight.sh
-```
+Shift+1 uplink · Shift+2 DNS · Shift+3 server spike · Shift+R reset · Shift+P presenter
 
-## E2E (sim)
-```bash
-# backend already on :8000 with ROOTIQ_MODE=sim
-cd frontend && npx playwright install chromium
-npm run test:e2e
-```
+## Team
 
-## EVE-NG golden snapshot (when lab is healthy)
-```bash
-# On EVE host — stop nodes first, then:
-# cp -a /opt/unetlab/tmp/0/<lab-uuid>/ /root/rootiq-golden/
-# Restore: cp -a /root/rootiq-golden/. /opt/unetlab/tmp/0/<lab-uuid>/
-```
-**Boot order:** R1 → SW1/SW2 (wait ~90s) → APP-01 → COLLECTOR-01 → `systemctl status rootiq-collector rootiq-lab-agent`
+| Role | Who |
+|---|---|
+| FE / keyboard demo | Ahmed |
+| BE / AI / INFRA / Presenter | Team (see kickoff) |
+
+## Docs
+
+Contracts · Architecture · Results · Progress (`docs/progress/`) · Full plan `RootIQ_Daily_Plan.md`
 
 ## Feature freeze
-After Day 11 / `v1.0-rc1`: no new features — fixes only, reviewed by two teammates.
+
+After Day 11 / `v1.0-rc1`: **no new features** — bugfixes only with two-person review.
