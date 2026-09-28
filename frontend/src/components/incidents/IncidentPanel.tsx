@@ -9,6 +9,7 @@ import { AffectedServices } from './AffectedServices';
 import { ActionCard } from './ActionCard';
 import { IncidentReplay } from './IncidentReplay';
 import { useTranslation } from 'react-i18next';
+import { api } from '@/lib/api';
 
 const STEPS: IncidentStatus[] = [
   'open',
@@ -207,6 +208,61 @@ export function IncidentPanel({ incident, onClose }: Props) {
                 <p className="text-slate-500">Waiting for recommendation…</p>
               )}
             </section>
+
+            {incident.verification && incident.verification.total > 0 && (
+              <section>
+                <h3 className="mb-2 text-xs uppercase tracking-wider text-slate-500">Recovery verification</h3>
+                <div
+                  className={clsx(
+                    'rounded-lg border px-3 py-2 text-xs',
+                    incident.verification.status === 'verified'
+                      ? 'border-ok/40 bg-ok/10 text-ok'
+                      : 'border-warn/40 bg-warn/10 text-warn',
+                  )}
+                >
+                  <div className="mb-1 font-semibold uppercase">
+                    {incident.verification.status} · {incident.verification.passed}/{incident.verification.total}
+                  </div>
+                  <ul className="space-y-0.5 font-mono text-[11px]">
+                    {incident.verification.checks.map((c) => (
+                      <li key={`${c.entity}-${c.metric}`}>
+                        {c.ok ? '✓' : '✗'} {c.metric} {c.op} {c.target} (now {c.observed ?? 'n/a'})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )}
+
+            {incident.knowledge && incident.knowledge.similar.length > 0 && (
+              <section>
+                <h3 className="mb-2 text-xs uppercase tracking-wider text-slate-500">Similar past incidents</h3>
+                <ul className="space-y-1 text-xs text-slate-300">
+                  {incident.knowledge.similar.map((h) => (
+                    <li key={h.id} className="rounded border border-noc-line/70 bg-noc-bg/40 px-2 py-1.5">
+                      <div className="font-mono text-[11px] text-info">{h.title}</div>
+                      <div className="text-[11px] text-slate-400">{h.snippet}</div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
+              {incident.acknowledgedBy ? (
+                <span>Acknowledged by {incident.acknowledgedBy}</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void api.acknowledge(incident.id, localStorage.getItem('rootiq.engineer') || 'Ahmed').catch(() => undefined)
+                  }
+                  className="rounded border border-noc-line px-2 py-1 text-slate-300 hover:bg-white/5"
+                >
+                  Acknowledge
+                </button>
+              )}
+            </div>
 
             <div className="rounded-lg border border-ok/30 bg-ok/10 px-3 py-2 text-xs text-ok">
               Noise reduction:{' '}

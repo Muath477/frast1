@@ -64,6 +64,14 @@ Lab collector → FastAPI ingest → detect/correlate/RCA/explain → WebSocket 
 
 Full Mermaid + 30s verbal: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
+## Multi-agent layer
+
+14 specialised agents (telemetry → detection → correlation/topology → RCA → explanation/knowledge → remediation → guardrail → **human** → execution → verification → learning) plus a read-only bilingual **Copilot** with a local **RAG** index. Twelve agents are fully deterministic; the LLM (Claude / Gemini / Groq) is optional and can only reword text with numbers grounded in measurements.
+
+- Per-agent benefit, needs, guardrails and failure behaviour: [`docs/AGENTS.md`](docs/AGENTS.md)
+- Big picture, spec compliance matrix, gaps, roadmap: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md)
+- UI: **Agents** page (roster, live trace, Copilot) · API: `GET /api/agents`, `POST /api/copilot/ask`
+
 ## Modes
 
 | | |

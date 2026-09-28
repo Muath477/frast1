@@ -2,6 +2,7 @@ data/recordings/*
 !data/recordings/.gitkeep
 data/incidents.json
 data/history.json
+data/postmortems/
 data/models/*
 !data/models/.gitkeep
 .env

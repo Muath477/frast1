@@ -2,8 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 from itertools import count
 
-from app.intelligence.explain import explain
-from app.intelligence.rca import LOW_CONFIDENCE, rank
+from app.agents.runtime import AgentRuntime
 from app.services.hub import hub
 
 
@@ -34,6 +33,10 @@ class IncidentState:
         self.root_cause = None
         self.explanation = None
         self.action = None
+        self.acknowledged_by: str | None = None
+        self.acknowledged_at: str | None = None
+        self.verification: dict | None = None
+        self.knowledge: dict | None = None
         self._analyze_task: asyncio.Task | None = None
 
     def to_dict(self) -> dict:
@@ -56,6 +59,10 @@ class IncidentState:
             "rawAlertCount": self.raw_alert_count,
             "timings": self.timings,
             "members": sorted(self.members),
+            "acknowledgedBy": self.acknowledged_by,
+            "acknowledgedAt": self.acknowledged_at,
+            "verification": self.verification,
+            "knowledge": self.knowledge,
         }
 
 
@@ -78,7 +85,9 @@ def _kind_for(root_id: str) -> str:
 
 
 class IncidentService:
-    def __init__(self, correlator, graph, demo_ref, history, persist=None, topology=None, actions=None):
+    def __init__(
+        self, correlator, graph, demo_ref, history, persist=None, topology=None, actions=None, agents=None
+    ):
         self.correlator = correlator
         self.graph = graph
         self.demo_ref = demo_ref
@@ -89,6 +98,10 @@ class IncidentService:
         self.open: dict[str, IncidentState] = {}
         self.history_list: list[IncidentState] = []
         self._seq = count(1)
+        self.agents = agents or AgentRuntime(
+            graph=graph, history=history, topology=topology, correlator=correlator
+        )
+        self.agents.bind(incidents=self, demo_ref=demo_ref)
 
     def _open_list(self) -> list[IncidentState]:
         return [i for i in self.open.values() if i.status != "resolved"]
@@ -100,7 +113,8 @@ class IncidentService:
         # incident cannot steal the UI before reset (E2E ×3 stability).
         if demo.get("state") in ("remediating", "recovered"):
             return
-        pick = self.correlator.pick(anomaly.entity_id, ts, self._open_list())
+        pick = self.agents.correlation.pick(anomaly.entity_id, ts, self._open_list())
+        opened_new = pick is None
         if pick is None:
             iid = f"INC-{next(self._seq):04d}"
             now = datetime.now(timezone.utc).isoformat()
@@ -136,12 +150,11 @@ class IncidentService:
                 "text": f"{anomaly.metric}={anomaly.value}",
             }
         )
-        affected: set[str] = set()
-        for m in pick.members:
-            affected.update(self.graph.services_through(m))
-        pick.affected_services = sorted(affected)
+        pick.affected_services = self.agents.topology_agent.services_for(pick.members)
         if pick.status == "open":
             pick.status = "investigating"
+        if opened_new:
+            await self.agents.correlation.opened(pick, anomaly.entity_id, anomaly.metric)
 
         if self.persist:
             self.persist(pick)
@@ -185,76 +198,48 @@ class IncidentService:
         if not affected:
             affected = [s for s in inc.members if s in self.graph.services]
 
-        top, conf = rank(inc.anomalies, affected, self.graph, self.history)
-        if not top:
+        # The orchestrator runs telemetry -> correlation -> topology -> RCA -> detection ->
+        # explanation -> knowledge, with per-agent timeouts and deterministic fallbacks.
+        result = await self.agents.orchestrator.investigate(inc, affected, self._facts)
+        if result is None:
             return inc.to_dict()
 
-        root = top[0]
-        inc.candidates = [c.to_dict() for c in top]
-        inc.needs_investigation = conf < LOW_CONFIDENCE
+        root = result.root
+        inc.candidates = result.candidates
+        inc.needs_investigation = result.needs_investigation
         inc.root_cause = {
             "entityId": root.entity_id,
             "label": root.label,
-            "confidence": conf,
+            "confidence": result.confidence,
         }
-        inc.cause_path = [root.entity_id]
-        downstream = self.graph.downstream(root.entity_id)
-        topo_ids = set()
-        if self.topology:
-            topo_ids = set(self.topology.nodes) | set(self.topology.links) | set(self.topology.services)
-        else:
-            topo_ids = set(self.graph.g.nodes)
-        inc.impact_path = sorted(downstream & topo_ids)
+        inc.cause_path = result.cause_path
+        inc.impact_path = result.impact_path
         top_metric = max(
             (a for a in inc.anomalies if a.entity_id == root.entity_id),
             key=lambda a: a.severity,
         ).metric
         inc.title = _title_for(root.entity_id, top_metric)
-        inc.timings["analyzedAt"] = datetime.now(timezone.utc).isoformat()
         if inc.status in ("open", "investigating"):
             inc.status = "recommendation_ready"
 
-        # Optional Isolation Forest evidence (supporting only — never decides root)
-        try:
-            from app.intelligence.anomaly import MultivariateScorer
+        if result.mv_evidence:  # Isolation Forest: supporting evidence only, never decides the root
+            inc.evidence.append(result.mv_evidence)
+        inc.explanation = result.explanation
+        if result.knowledge:
+            inc.knowledge = result.knowledge
 
-            metrics_map: dict[str, dict[str, float]] = {}
-            for a in inc.anomalies:
-                metrics_map.setdefault(a.entity_id, {})[a.metric] = a.value
-            mv = MultivariateScorer().score(metrics_map)
-            if mv is not None and mv > 0.6:
-                inc.evidence.append(
-                    {
-                        "id": f"ev-mv-{len(inc.evidence)+1}",
-                        "entityId": root.entity_id,
-                        "metric": "multivariate_score",
-                        "value": round(mv, 2),
-                        "baseline": 0.0,
-                        "unit": "",
-                        "ts": datetime.now(timezone.utc).isoformat(),
-                        "text": (
-                            f"Multivariate anomaly score {mv:.2f} "
-                            "(Isolation Forest trained on 15 min of healthy lab data)"
-                        ),
-                    }
-                )
-        except Exception:
-            pass
-
-        # Build explain facts from anomalies
-        facts = self._facts(inc, root.entity_id, conf)
-        kind = _kind_for(root.entity_id)
-        try:
-            inc.explanation = await explain(kind, facts)
-        except Exception:
-            inc.explanation = None
-
-        # Attach pending action recommendation (Day 8)
+        # Attach pending action recommendation (planner + guardrail agents)
         if self.actions and not (inc.action and inc.action.get("approvalStatus") == "pending"):
-            self.actions.recommend(inc)
+            await self.actions.recommend(inc)
+        if inc.action and inc.action.get("approvalStatus") == "pending":
+            await self.agents.orchestrator.handoff(inc)
 
         if self.persist:
             self.persist(inc)
+        try:
+            self.agents.knowledge.index_incident(inc.to_dict())
+        except Exception:
+            pass
         await hub.broadcast("incident", inc.to_dict())
         return inc.to_dict()
 
@@ -306,6 +291,23 @@ class IncidentService:
                 self.persist(inc)
             await hub.broadcast("incident", inc.to_dict())
         self.open.clear()
+
+    def resume_sequence(self, existing_ids: list[str]) -> None:
+        """Continue numbering after the highest persisted INC-#### id."""
+        nums = [
+            int(i.split("-", 1)[1]) for i in existing_ids if i.startswith("INC-") and i.split("-", 1)[1].isdigit()
+        ]
+        self._seq = count(max(nums, default=0) + 1)
+
+    def acknowledge(self, iid: str, by: str) -> dict | None:
+        inc = self.open.get(iid) or next((h for h in self.history_list if h.id == iid), None)
+        if inc is None:
+            return None
+        inc.acknowledged_by = by
+        inc.acknowledged_at = datetime.now(timezone.utc).isoformat()
+        if self.persist:
+            self.persist(inc)
+        return inc.to_dict()
 
     def list_incidents(self, limit: int = 50) -> list[dict]:
         items = list(self.open.values()) + self.history_list

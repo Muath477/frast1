@@ -1,0 +1,108 @@
+import pytest
+
+from app.core.config import settings
+from app.llm import client
+
+
+def enable(monkeypatch, provider, key_attr):
+    monkeypatch.setattr(settings, "llm_enabled", True)
+    monkeypatch.setattr(settings, "llm_provider", provider)
+    monkeypatch.setattr(settings, "llm_model", "")
+    monkeypatch.setattr(settings, key_attr, "test-key")
+
+
+def test_disabled_by_default_and_info_never_leaks_keys(monkeypatch):
+    monkeypatch.setattr(settings, "llm_enabled", False)
+    info = client.info()
+    assert info["enabled"] is False
+    assert "key" not in str(info).lower()
+
+
+def test_enabled_requires_a_key(monkeypatch):
+    monkeypatch.setattr(settings, "llm_enabled", True)
+    monkeypatch.setattr(settings, "llm_provider", "gemini")
+    monkeypatch.setattr(settings, "gemini_api_key", "")
+    assert client.enabled() is False
+
+
+def test_unknown_provider_is_disabled(monkeypatch):
+    enable(monkeypatch, "anthropic", "anthropic_api_key")
+    monkeypatch.setattr(settings, "llm_provider", "made-up")
+    assert client.enabled() is False
+
+
+def test_default_models_and_override(monkeypatch):
+    monkeypatch.setattr(settings, "llm_model", "")
+    assert client.model_name("groq") == client.DEFAULT_MODELS["groq"]
+    monkeypatch.setattr(settings, "llm_model", "custom-1")
+    assert client.model_name("gemini") == "custom-1"
+
+
+@pytest.mark.asyncio
+async def test_disabled_returns_none_without_network(monkeypatch):
+    monkeypatch.setattr(settings, "llm_enabled", False)
+
+    async def boom(*a, **k):
+        raise AssertionError("network must not be touched when disabled")
+
+    monkeypatch.setattr(client, "_post", boom)
+    assert await client.complete("s", "u") is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "provider,key_attr,reply,check",
+    [
+        ("anthropic", "anthropic_api_key", {"content": [{"type": "text", "text": "hi from claude"}]},
+         lambda url, h, p: "anthropic.com" in url and h["x-api-key"] == "test-key" and p["system"] == "SYS"),
+        ("gemini", "gemini_api_key", {"candidates": [{"content": {"parts": [{"text": "hi from gemini"}]}}]},
+         lambda url, h, p: "generativelanguage" in url and h["x-goog-api-key"] == "test-key"
+         and p["systemInstruction"]["parts"][0]["text"] == "SYS"),
+        ("groq", "groq_api_key", {"choices": [{"message": {"content": "hi from groq"}}]},
+         lambda url, h, p: "groq.com" in url and h["authorization"] == "Bearer test-key"
+         and p["messages"][0] == {"role": "system", "content": "SYS"}),
+    ],
+)
+async def test_each_provider_builds_the_right_request(monkeypatch, provider, key_attr, reply, check):
+    enable(monkeypatch, provider, key_attr)
+    seen = {}
+
+    async def fake_post(url, headers, payload, timeout):
+        seen.update(url=url, headers=headers, payload=payload)
+        return reply
+
+    monkeypatch.setattr(client, "_post", fake_post)
+    out = await client.complete("SYS", "USER")
+    assert out and out.startswith("hi from")
+    assert check(seen["url"], seen["headers"], seen["payload"])
+
+
+@pytest.mark.asyncio
+async def test_provider_errors_fall_back_to_none(monkeypatch):
+    enable(monkeypatch, "groq", "groq_api_key")
+
+    async def fail(*a, **k):
+        raise RuntimeError("HTTP 500")
+
+    monkeypatch.setattr(client, "_post", fail)
+    assert await client.complete("s", "u") is None
+
+
+@pytest.mark.asyncio
+async def test_usage_counters_track_calls_errors_and_size(monkeypatch):
+    enable(monkeypatch, "groq", "groq_api_key")
+    monkeypatch.setattr(client, "USAGE", {"calls": 0, "errors": 0, "totalMs": 0.0, "charsIn": 0, "charsOut": 0})
+
+    async def ok(*a, **k):
+        return {"choices": [{"message": {"content": "answer"}}]}
+
+    async def fail(*a, **k):
+        raise RuntimeError("500")
+
+    monkeypatch.setattr(client, "_post", ok)
+    await client.complete("sys", "user prompt")
+    monkeypatch.setattr(client, "_post", fail)
+    await client.complete("sys", "user prompt")
+    u = client.usage()
+    assert u["calls"] == 2 and u["errors"] == 1 and u["charsIn"] == 2 * len("sysuser prompt") and u["charsOut"] == len("answer")
+    assert client.info()["usage"]["calls"] == 2 and "key" not in str(client.info()).lower()
