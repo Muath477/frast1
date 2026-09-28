@@ -22,6 +22,20 @@ export const api = {
   reset: () => j<DemoState>('/api/demo/reset', { method: 'POST' }),
   setMode: (mode: 'live' | 'sim') =>
     j<DemoState>('/api/demo/mode', { method: 'POST', body: JSON.stringify({ mode }) }),
+  incidentReplay: (id: string) =>
+    j<{ incidentId: string; steps: Array<{ ts: number; kind: string; label: string; entityId?: string; value?: number }> }>(
+      `/api/incidents/${id}/replay`,
+    ),
+  runs: () =>
+    j<{
+      runs: unknown[];
+      summary: {
+        count: number;
+        top1Accuracy: number | null;
+        avgTimeToRootCause: number | null;
+        avgNoiseReduction: number | null;
+      };
+    }>('/api/runs'),
   approve: (actionId: string, decidedBy: string) =>
     j(`/api/actions/${actionId}/approve`, {
       method: 'POST',

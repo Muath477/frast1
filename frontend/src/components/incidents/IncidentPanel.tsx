@@ -7,6 +7,8 @@ import { CandidateRanking } from './CandidateRanking';
 import { EvidenceList } from './EvidenceList';
 import { AffectedServices } from './AffectedServices';
 import { ActionCard } from './ActionCard';
+import { IncidentReplay } from './IncidentReplay';
+import { useTranslation } from 'react-i18next';
 
 const STEPS: IncidentStatus[] = [
   'open',
@@ -23,6 +25,7 @@ interface Props {
 }
 
 export function IncidentPanel({ incident, onClose }: Props) {
+  const { t, i18n } = useTranslation();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -38,6 +41,10 @@ export function IncidentPanel({ incident, onClose }: Props) {
 
   const conf = incident?.rootCause?.confidence ?? 0;
 
+  if (!incident) {
+    return null;
+  }
+
   return (
     <AnimatePresence>
       {incident && (
@@ -45,7 +52,7 @@ export function IncidentPanel({ incident, onClose }: Props) {
           initial={{ x: 40, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 40, opacity: 0 }}
-          className="absolute right-0 top-0 z-20 flex h-full w-[420px] flex-col border-l border-noc-line bg-noc-panel/98 shadow-2xl"
+          className="absolute end-0 top-0 z-20 flex h-full w-[420px] flex-col border-s border-noc-line bg-noc-panel/98 shadow-2xl"
         >
           <header className="border-b border-noc-line px-4 py-3">
             <div className="flex items-center justify-between">
@@ -98,7 +105,7 @@ export function IncidentPanel({ incident, onClose }: Props) {
                 <ConfidenceRing value={conf} />
                 <div className="min-w-0 flex-1">
                   <div className="text-xs uppercase tracking-wider text-slate-500">
-                    Root cause ·{" "}
+                    {t('incident.rootCause')} ·{" "}
                     {incident.rootCause.entityId.startsWith("link-")
                       ? "Network"
                       : incident.rootCause.entityId === "svc-dns"
@@ -107,7 +114,7 @@ export function IncidentPanel({ incident, onClose }: Props) {
                   </div>
                   <div className="font-semibold text-crit">{incident.rootCause.label}</div>
                   <div className="font-mono text-[11px] text-slate-400">
-                    {incident.rootCause.entityId}
+                    <bdi>{incident.rootCause.entityId}</bdi>
                   </div>
                   {incident.needsInvestigation && (
                     <div className="mt-2 rounded border border-warn/40 bg-warn/10 px-2 py-1 text-[11px] text-warn">
@@ -143,13 +150,19 @@ export function IncidentPanel({ incident, onClose }: Props) {
                       : 'template'}
                   </span>
                 </h3>
-                <p className="text-xs leading-relaxed text-slate-300">{incident.explanation.en}</p>
+                <p className="text-xs leading-relaxed text-slate-300">
+                  {i18n.language === 'ar' && incident.explanation.ar
+                    ? incident.explanation.ar
+                    : incident.explanation.en}
+                </p>
               </section>
             )}
 
+            <IncidentReplay incidentId={incident.id} />
+
             <section>
               <h3 className="mb-2 text-xs uppercase tracking-wider text-slate-500">
-                Evidence
+                {t('incident.evidence')}
               </h3>
               <EvidenceList
                 evidence={incident.evidence}
@@ -166,7 +179,7 @@ export function IncidentPanel({ incident, onClose }: Props) {
 
             <section>
               <h3 className="mb-2 text-xs uppercase tracking-wider text-slate-500">
-                Recommended action
+                {t('incident.action')}
               </h3>
               {incident.action ? (
                 <ActionCard

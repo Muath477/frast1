@@ -9,11 +9,3 @@ function Placeholder({ title }: { title: string }) {
 export function ServicesPage() {
   return <Placeholder title="Services" />;
 }
-
-export function AnalyticsPage() {
-  return <Placeholder title="Analytics" />;
-}
-
-export function SettingsPage() {
-  return <Placeholder title="Settings" />;
-}

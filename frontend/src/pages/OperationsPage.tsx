@@ -10,8 +10,11 @@ import { IncidentPanel } from '@/components/incidents/IncidentPanel';
 import { useOps } from '@/store/useOps';
 import { api } from '@/lib/api';
 import type { Focus } from '@/components/topology/DeviceNode';
+import { useTranslation } from 'react-i18next';
+import { ShieldCheck } from 'lucide-react';
 
 export function OperationsPage() {
+  const { t } = useTranslation();
   const topology = useOps((s) => s.topology);
   const selection = useOps((s) => s.selection);
   const select = useOps((s) => s.select);
@@ -73,6 +76,13 @@ export function OperationsPage() {
       />
       <ServicesPanel services={topology.services} dnsSuppressed={dnsSuppressed} />
       <DemoControls />
+
+      {!active && (
+        <div className="pointer-events-none absolute start-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-ok/30 bg-ok/10 px-4 py-2 text-sm text-ok">
+          <ShieldCheck className="size-4" />
+          {t('incident.empty')}
+        </div>
+      )}
 
       <IncidentPanel incident={active} />
 
