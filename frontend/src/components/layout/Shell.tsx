@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { Timeline } from '@/components/timeline/Timeline';
 import { useOpsSocket } from '@/hooks/useOpsSocket';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useCallback } from 'react';
@@ -30,8 +31,8 @@ export function Shell() {
         <Outlet />
       </main>
 
-      <footer className="col-start-2 border-t border-noc-line bg-noc-panel px-4 py-2 text-xs text-slate-500">
-        Timeline — inject ▲ · alerts · incident ● (full Day 6 polish)
+      <footer className="col-start-2 min-h-0 overflow-hidden border-t border-noc-line bg-noc-panel px-3">
+        <Timeline />
       </footer>
     </div>
   );

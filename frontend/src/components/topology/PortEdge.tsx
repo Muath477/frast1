@@ -22,7 +22,16 @@ export function PortEdge(p: EdgeProps<PortEdgeT>) {
 
   return (
     <>
-      <BaseEdge id={p.id} path={path} style={{ stroke: color, strokeWidth: width, opacity: 0.35 }} />
+      <BaseEdge
+        id={p.id}
+        path={path}
+        style={{
+          stroke: color,
+          strokeWidth: width,
+          opacity: 0.35,
+          transition: 'stroke 1.2s ease, stroke-width 1.2s ease',
+        }}
+      />
       <path
         d={path}
         fill="none"
@@ -30,7 +39,10 @@ export function PortEdge(p: EdgeProps<PortEdgeT>) {
         strokeWidth={width}
         strokeDasharray="6 10"
         className={focus === 'cause' ? 'rootiq-flow rootiq-cause' : 'rootiq-flow'}
-        style={{ animationDuration: `${cycle}s` }}
+        style={{
+          animationDuration: `${cycle}s`,
+          transition: 'stroke 1.2s ease, stroke-width 1.2s ease',
+        }}
       />
       <EdgeLabelRenderer>
         <div
