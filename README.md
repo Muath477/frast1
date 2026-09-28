@@ -52,7 +52,9 @@ From `GET /api/runs` (9 sim runs) — details in [`docs/RESULTS.md`](docs/RESULT
 - Deck: [`docs/RootIQ_Pitch_Deck_Final.pptx`](docs/RootIQ_Pitch_Deck_Final.pptx) (numbers from RESULTS)
 - Script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)
 - Judge Q&A: [`docs/QA_BANK.md`](docs/QA_BANK.md)
+- Rehearsal / drills: [`docs/REHEARSAL.md`](docs/REHEARSAL.md) · Bag: [`docs/BAG.md`](docs/BAG.md)
 - Backup video checklist: [`docs/demo-backup.md`](docs/demo-backup.md)
+- Ship tag: **`v1.0`**
 
 ## Demo hotkeys
 

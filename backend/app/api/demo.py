@@ -84,6 +84,9 @@ async def set_mode(body: ModeBody, request: Request):
     st.detector.active.clear()
     st.detector.alert_level.clear()
     st.pipeline.alerts.clear()
+    if hasattr(st, "actions") and st.actions:
+        st.actions.actions.clear()
+        st.actions._recovering.clear()
     st.demo.update(scenario=None, state="idle", injectedAt=None)
 
     if body.mode == "live" and prev == "sim":
