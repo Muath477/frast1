@@ -91,7 +91,7 @@ async def test_provider_errors_fall_back_to_none(monkeypatch):
 @pytest.mark.asyncio
 async def test_usage_counters_track_calls_errors_and_size(monkeypatch):
     enable(monkeypatch, "groq", "groq_api_key")
-    monkeypatch.setattr(client, "USAGE", {"calls": 0, "errors": 0, "totalMs": 0.0, "charsIn": 0, "charsOut": 0})
+    monkeypatch.setattr(client, "USAGE", {"calls": 0, "errors": 0, "rateLimited": 0, "skipped": 0, "totalMs": 0.0, "charsIn": 0, "charsOut": 0})
 
     async def ok(*a, **k):
         return {"choices": [{"message": {"content": "answer"}}]}
@@ -106,3 +106,28 @@ async def test_usage_counters_track_calls_errors_and_size(monkeypatch):
     u = client.usage()
     assert u["calls"] == 2 and u["errors"] == 1 and u["charsIn"] == 2 * len("sysuser prompt") and u["charsOut"] == len("answer")
     assert client.info()["usage"]["calls"] == 2 and "key" not in str(client.info()).lower()
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_starts_a_cooldown_and_skips_calls_until_it_ends(monkeypatch):
+    import httpx
+
+    enable(monkeypatch, "groq", "groq_api_key")
+    monkeypatch.setattr(client, "USAGE", {"calls": 0, "errors": 0, "rateLimited": 0, "skipped": 0, "totalMs": 0.0, "charsIn": 0, "charsOut": 0})
+    monkeypatch.setattr(client, "_cooldown_until", 0.0)
+    calls = []
+
+    async def limited(url, headers, payload, timeout):
+        calls.append(1)
+        req = httpx.Request("POST", url)
+        raise httpx.HTTPStatusError("429", request=req, response=httpx.Response(429, headers={"retry-after": "7"}, request=req, text="rate limit"))
+
+    monkeypatch.setattr(client, "_post", limited)
+    assert await client.complete("s", "u") is None
+    assert client.usage()["rateLimited"] == 1 and 5 < client.usage()["cooldownSeconds"] <= 7
+    assert await client.complete("s", "u") is None  # skipped: the provider is not called during the cooldown
+    assert len(calls) == 1 and client.usage()["skipped"] == 1
+
+    monkeypatch.setattr(client, "_cooldown_until", 0.0)  # cooldown over
+    assert await client.complete("s", "u") is None
+    assert len(calls) == 2

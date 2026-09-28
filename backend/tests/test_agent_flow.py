@@ -275,3 +275,36 @@ async def test_incident_ids_continue_after_persisted_ones(tmp_path):
     s.incidents.resume_sequence(["INC-0001", "INC-0007", "junk", "INC-abc"])
     inc = await run_scenario(s)
     assert inc.id == "INC-0008"
+
+
+@pytest.mark.asyncio
+async def test_slow_agents_do_not_get_their_analysis_cancelled_by_new_symptoms(tmp_path):
+    """Regression: a slow explanation/LLM used to be cancelled by every new anomaly (livelock ~80 s)."""
+    s = build_stack(tmp_path)
+    real_write = s.agents.explanation.write
+
+    async def slow_write(inc, kind, facts):
+        await asyncio.sleep(0.8)
+        return await real_write(inc, kind, facts)
+
+    s.agents.explanation.write = slow_write
+    for _ in range(40):
+        await s.sim.step(1.0)
+    s.demo.update(scenario="uplink-congestion", state="injected", injectedAt="t0")
+    s.sim.inject("uplink-congestion")
+    for _ in range(6):
+        await s.sim.step(1.0)
+        await asyncio.sleep(0)
+    inc = next(iter(s.incidents.open.values()))
+    inc.opened_epoch -= 60  # the 10 s debounce deadline has passed: analysis starts on the next symptom
+
+    diagnosed_while_symptoms_kept_arriving = False
+    for _ in range(6):  # a symptom every 0.6 s: the next one lands while the 0.8 s analysis is in flight
+        await s.sim.step(1.0)
+        await asyncio.sleep(0.6)
+        diagnosed_while_symptoms_kept_arriving = diagnosed_while_symptoms_kept_arriving or bool(inc.root_cause)
+    await asyncio.sleep(2.0)
+
+    assert diagnosed_while_symptoms_kept_arriving  # not only after the symptoms stopped
+    assert inc.root_cause and inc.status == "awaiting_approval" and inc.action
+    assert sum(1 for t in s.agents.trace.for_incident(inc.id) if t["action"] == "handoff_to_human") == 1

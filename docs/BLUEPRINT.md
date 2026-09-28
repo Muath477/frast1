@@ -147,7 +147,7 @@ flowchart TB
 | §5 المعمارية (مصادر ← جمع ← تطبيع ← تخزين ← ذكاء ← واجهة) | ✅ | `docs/ARCHITECTURE.md` |
 | §6 مختبر EVE-NG | ✅ ملفات · ⚠️ تشغيل | `lab/configs`, `lab/eve/README.md`. العناوين في `configs/topology.json` (نجمة حول R1 بقرار مجمّد؛ أمثلة الوثيقة توضيحية) |
 | §7 الخريطة والمنافذ والألوان | ✅ | React Flow + `PortEdge/DeviceNode`، الـlayout محفوظ (`PUT /api/topology/layout`) |
-| §8 القياسات | ✅ SNMP · ICMP · DNS · HTTP · Syslog · psutil-agent (`lab/collector`) | ➕ `POST /api/topology/reconcile` للتحقق من CDP/LLDP؛ ⚠️ الـcollector لا يجمع CDP/LLDP بعد |
+| §8 القياسات | ✅ SNMP · ICMP · DNS · HTTP · وكيل المضيف (psutil) في `lab/collector` — ⚠️ **Syslog**: المستمع مكتوب لكنه غير موصول بالـcollector (انظر الفروقات ٤) | ➕ `POST /api/topology/reconcile` للتحقق من CDP/LLDP؛ ⚠️ الـcollector لا يجمع CDP/LLDP بعد |
 | §9 الخدمات (Topology/Telemetry/Incident/RCA/Recommendation/Realtime) | ✅ | ➕ `POST /api/incidents/{id}/acknowledge` (كانت في §9 ولم تكن موجودة) |
 | §10 نموذج البيانات | ⚠️ | جداول `incidents/incident_evidence/actions/audit_log/runs` موجودة؛ **جداول `devices/interfaces/links/metrics` غير موجودة** (الحالة في الذاكرة + `topology.json`). ← §9 خطة |
 | §11 الذكاء (baseline + IF + graph + RCA + شرح) | ✅ | الأوزان مطابقة (0.30/0.25/0.20/0.15/0.10) |
@@ -162,7 +162,11 @@ flowchart TB
 ### فروقات مهمة بين الادعاء والواقع (للأمانة)
 1. **QoS الحقيقي:** خطة الأيام تعد بتطبيق `service-policy UPLINK-QOS` عبر Netmiko، لكن وكيل المختبر الحالي (`lab_agent.py`) ينفّذ لسيناريو الازدحام **إيقاف مولّد iperf3** فقط. لذلك كتبنا في كل playbook حقل `labImplementation` يوضح المنفَّذ فعلًا. التطبيق الحقيقي = بند في §9.
 2. **الدقة المقاسة (9/9 و12 ث)** من **المحاكاة**، وليست من المختبر الحي بعد (كما يذكر `RESULTS.md`).
-3. **طبقة الـLLM** مختبرة بمحاكاة المزوّدين (mock)؛ لم تُجرَّب بمفاتيح حقيقية هنا.
+3. **طبقة الـLLM** جُرّبت بمفتاح **Groq** حقيقي (تفسير + Copilot، بلا أخطاء)، أما Gemini وClaude فبمحاكاة الطلب فقط.
+4. **الـCollector لا يشغّل مستمع Syslog:** `lab/collector/syslog_listener.py` موجود لكن `collector.py` لا يستورده ولا يبدأه، فمصدر Syslog المطلوب في المواصفة (§8) غير موصول في الوضع الحي. (التحويل من رسائل Syslog إلى أحداث مكتوب، ينقصه التشغيل.)
+5. **`lab/app01/setup.sh` ينكسر:** ينسخ `named.conf.local` وهو غير موجود في `lab/app01/` (خطة الأيام تقول إنه يجب نسخه من ملاحظات البناء)، والسكربت بـ`set -e` فيتوقف عند أول سطر نسخ.
+6. **إعداد الوكيل المحصور غير مكتوب في سكربت:** صلاحيات `sudoers` ومفتاح SSH بين COLLECTOR-01 وAPP-01 موجودة في نص خطة الأيام (`RootIQ_Daily_Plan.md` سطر ~1921) لا في ملف قابل للتشغيل.
+7. **Docker لم يُجرَّب:** خدمة Docker Desktop كانت متوقفة على الجهاز، فلم أبنِ الصور بعد إضافة `COPY docs` و`COPY lab/configs`.
 
 ---
 
@@ -170,7 +174,8 @@ flowchart TB
 
 | الحالة | الأمر |
 |---|---|
-| محاكاة محلية | `ROOTIQ_MODE=sim` ثم uvicorn + `npm run dev` (انظر `README.md`) |
+| **أسرع طريقة (ويندوز)** | `powershell -ExecutionPolicy Bypass -File .\scripts\run-demo.ps1` ثم صفحة `/agents` تُفتح تلقائيًا؛ مع LLM: `$env:GROQ_API_KEY='...'` ثم `-Llm groq`؛ الإيقاف: `-Stop` |
+| محاكاة محلية (يدوي) | `ROOTIQ_MODE=sim` ثم uvicorn + `npm run dev` (انظر `README.md`) |
 | Docker | `docker compose up -d --build` (الصور تنسخ الآن `docs/` و`lab/configs` لصالح الـRAG) |
 | نشر عام | `render.yaml` (صورة واحدة) |
 | المتغيرات | `.env.example` (الجدول الكامل في `AGENTS.md §7`) |
@@ -248,5 +253,8 @@ flowchart TB
 - [x] الوكلاء لا ينفّذون بدون موافقة إنسان (اختبارات رفض + fail-closed).
 - [x] كل وكيل اختياري له بديل حتمي وتم اختبار التعطيل والمهلة.
 - [x] الواجهة: Agents + Trace + Copilot + خطة المعالجة + التحقق.
-- [ ] تشغيل الوضع الحي على EVE-NG ×3 بعد هذه التغييرات (يحتاج المختبر).
-- [ ] تجربة LLM بمفتاح حقيقي وقياس `usage`.
+- [x] Playwright ×3 (حلقة الديمو الكاملة: حقن ← سبب جذري ← رفض ← موافقة ← تعافٍ) نجحت في متصفح حقيقي (Edge) والـLLM مفعّل.
+- [x] الوضع الحي جُرّب **بعقد وكيل المختبر الحقيقي** (`lab_agent.py` بأوامره الخارجية مستبدلة بمسجِّلات) وcollector مزيف: الرفض لا يستدعي المختبر، والموافقة تستدعي `remediate` مرة واحدة، والتحقق 3/3، ومع `ROOTIQ_EXECUTION_ENABLED=0` تصير الموافقة Dry run بلا أي استدعاء.
+- [x] تجربة LLM بمفتاح Groq حقيقي وقياس `usage` (انظر `AGENTS.md §5`).
+- [ ] تشغيل الوضع الحي على **EVE-NG الحقيقي** ×3 (يحتاج المختبر).
+- [ ] بناء صور Docker وتجربتها (تحتاج تشغيل Docker Desktop).

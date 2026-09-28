@@ -71,6 +71,7 @@ Full Mermaid + 30s verbal: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Per-agent benefit, needs, guardrails and failure behaviour: [`docs/AGENTS.md`](docs/AGENTS.md)
 - Big picture, spec compliance matrix, gaps, roadmap: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md)
 - UI: **Agents** page (roster, live trace, Copilot) · API: `GET /api/agents`, `POST /api/copilot/ask`
+- One command (Windows): `powershell -ExecutionPolicy Bypass -File .\scripts\run-demo.ps1` starts the backend + UI in simulation mode and opens the Agents page. Optional LLM: `$env:GROQ_API_KEY='...'` then add `-Llm groq` (the key is read from the environment and never stored). Stop with `-Stop`.
 
 ## Modes
 

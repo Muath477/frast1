@@ -166,3 +166,46 @@ async def test_disabling_the_knowledge_agent_stops_retrieval_but_not_live_answer
     assert live["incidentId"] and live["answer"] and live["sources"] == [{"source": f"incident/{live['incidentId']}", "title": "live incident state", "n": 1}]
     docs = await s.agents.copilot.ask("How do I run the backend?")
     assert docs["confidence"] == "none" and docs["sources"] == []
+
+
+@pytest.mark.asyncio
+async def test_threshold_question_finds_the_metric_specific_chunk(tmp_path):
+    s = build_stack(tmp_path)
+    r = await s.agents.copilot.ask("What are the CPU thresholds?")
+    assert r["intent"] == "docs" and r["sources"][0]["source"] == "app/intelligence/thresholds.py"
+    assert "80" in r["answer"] and "95" in r["answer"]
+
+
+@pytest.mark.asyncio
+async def test_llm_refusal_or_dropped_facts_fall_back_to_the_verified_draft(tmp_path, monkeypatch):
+    s = build_stack(tmp_path)
+    await run_scenario(s)
+    monkeypatch.setattr(llm, "enabled", lambda: True)
+
+    async def refuse(*a, **k):
+        return "لا تحتوي الحقائق على معلومات كافية للإجابة."
+
+    monkeypatch.setattr(llm, "complete", refuse)
+    r = await s.agents.copilot.ask("لماذا ليس DNS هو السبب؟")
+    assert r["source"] == "deterministic" and "DNS" in r["answer"]
+
+    async def drops_confidence(*a, **k):
+        return "Congestion on the uplink is the likely cause."
+
+    monkeypatch.setattr(llm, "complete", drops_confidence)
+    r = await s.agents.copilot.ask("Why is this the root cause?")
+    assert r["source"] == "deterministic"  # the draft states a confidence percentage the rewrite dropped
+
+
+@pytest.mark.asyncio
+async def test_fixed_messages_never_reach_the_llm(tmp_path, monkeypatch):
+    s = build_stack(tmp_path)
+    monkeypatch.setattr(llm, "enabled", lambda: True)
+
+    async def must_not_call(*a, **k):
+        raise AssertionError("LLM called for a fixed message")
+
+    monkeypatch.setattr(llm, "complete", must_not_call)
+    assert (await s.agents.copilot.ask("Approve the action now"))["source"] == "deterministic"
+    assert (await s.agents.copilot.ask("What happened?"))["confidence"] == "n/a"  # no incident
+    assert (await s.agents.copilot.ask("banana smoothie recipe with mango"))["confidence"] == "none"

@@ -38,6 +38,7 @@ class IncidentState:
         self.verification: dict | None = None
         self.knowledge: dict | None = None
         self._analyze_task: asyncio.Task | None = None
+        self._analyzing = False  # True while analyze() is running (it may wait on LLM/RAG)
 
     def to_dict(self) -> dict:
         return {
@@ -167,6 +168,10 @@ class IncidentService:
             # Still allow re-analyze if not yet analyzed
             if inc.root_cause and inc.status != "investigating":
                 return
+        if inc._analyzing:
+            # Never cancel an analysis that is already running: with a slow LLM/RAG each new symptom
+            # used to cancel it, so the root cause only appeared after the symptoms stopped arriving.
+            return
 
         async def _debounced():
             # Max 10s from open, or 3s quiet
@@ -178,7 +183,11 @@ class IncidentService:
                 deadline = now - opened >= 10.0
                 if quiet or deadline:
                     break
-            await self.analyze(inc.id)
+            inc._analyzing = True
+            try:
+                await self.analyze(inc.id)
+            finally:
+                inc._analyzing = False
 
         if inc._analyze_task and not inc._analyze_task.done():
             inc._analyze_task.cancel()
