@@ -51,6 +51,13 @@ docker compose up -d --build
 ./scripts/preflight.sh
 ```
 
+### نشر عام (رابط للمشاركة)
+**الآن (نفق Cloudflare — اللابتوب لازم يظل شغّال):** الرابط يظهر من `cloudflared tunnel --url http://127.0.0.1:5173`
+
+**دائم (Render — باك+فرونت في صورة واحدة):** ادفع الريبو ثم افتح  
+https://dashboard.render.com/select-repo?type=blueprint  
+واختر `iksasa15/frast1` (يستخدم `render.yaml` + `Dockerfile`).
+
 ## Architecture
 
 Lab collector → FastAPI ingest → detect/correlate/RCA/explain → WebSocket UI → approve → whitelisted lab agent.
