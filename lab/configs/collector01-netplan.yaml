@@ -1,0 +1,9 @@
+# COLLECTOR-01 — apply as /etc/netplan/01-lab.yaml then: sudo netplan apply
+network:
+  version: 2
+  ethernets:
+    ens3:
+      addresses: [10.10.30.10/24]
+      routes: [{ to: default, via: 10.10.30.1 }]
+    ens4:
+      dhcp4: true
