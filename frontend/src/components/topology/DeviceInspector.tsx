@@ -36,6 +36,20 @@ export function DeviceInspector({ device, services, onClose }: Props) {
           }
         />
 
+        {(device.metrics?.cpu_percent != null || device.metrics?.mem_percent != null) && (
+          <section>
+            <h3 className="mb-2 text-xs uppercase tracking-wider text-slate-500">Live metrics</h3>
+            <div className="space-y-2">
+              {device.metrics.cpu_percent != null && (
+                <MetricBar label="CPU" value={device.metrics.cpu_percent} />
+              )}
+              {device.metrics.mem_percent != null && (
+                <MetricBar label="Mem" value={device.metrics.mem_percent} />
+              )}
+            </div>
+          </section>
+        )}
+
         <section>
           <h3 className="mb-2 text-xs uppercase tracking-wider text-slate-500">Interfaces</h3>
           <table className="w-full text-left text-xs">
@@ -93,6 +107,24 @@ function Row({
     <div className="flex items-start justify-between gap-3">
       <span className="text-slate-500">{label}</span>
       <span className={mono ? 'font-mono text-right' : 'text-right'}>{value}</span>
+    </div>
+  );
+}
+
+function MetricBar({ label, value }: { label: string; value: number }) {
+  const pct = Math.max(0, Math.min(100, value));
+  return (
+    <div>
+      <div className="mb-1 flex justify-between text-xs">
+        <span className="text-slate-400">{label}</span>
+        <span className="font-mono tabular-nums">{Math.round(pct)}%</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded bg-noc-bg">
+        <div
+          className="h-full rounded bg-info transition-[width]"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

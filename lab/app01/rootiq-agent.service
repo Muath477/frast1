@@ -1,0 +1,9 @@
+[Unit]
+Description=RootIQ APP-01 Host Agent
+After=network-online.target
+[Service]
+ExecStart=/usr/bin/python3 /home/rootiq/rootiq/lab/app01/agent.py
+Restart=always
+RestartSec=2
+[Install]
+WantedBy=multi-user.target

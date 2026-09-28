@@ -24,11 +24,13 @@ export function TopBar() {
         <span className="text-xs text-slate-400">Operations</span>
         <span
           className={clsx(
-            'rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider',
-            demo.mode === 'sim' ? 'bg-warn/20 text-warn' : 'bg-ok/20 text-ok',
+            'rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+            demo.mode === 'live'
+              ? 'animate-pulse bg-ok/20 text-ok'
+              : 'bg-info/20 text-info',
           )}
         >
-          {demo.mode}
+          {demo.mode === 'live' ? 'LIVE LAB' : 'SIMULATION'}
         </span>
       </div>
       <div className="flex items-center gap-3 text-xs text-slate-400">
@@ -36,7 +38,10 @@ export function TopBar() {
           <span className={clsx('inline-block size-2 rounded-full', dot)} />
           {wsStatus}
         </span>
-        <span>{ageSec === null ? '—' : `updated ${ageSec}s ago`}</span>
+        <span>{ageSec === null ? '—' : `Last update ${ageSec}s ago`}</span>
+        <button type="button" className="rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-500 hover:bg-white/5">
+          EN
+        </button>
       </div>
     </header>
   );

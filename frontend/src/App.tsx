@@ -3,9 +3,9 @@ import { Shell } from '@/components/layout/Shell';
 import { OperationsPage } from '@/pages/OperationsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { AuditPage } from '@/pages/AuditPage';
+import { DevicesPage } from '@/pages/DevicesPage';
 import {
   IncidentsPage,
-  DevicesPage,
   ServicesPage,
   AnalyticsPage,
 } from '@/pages/Placeholders';
