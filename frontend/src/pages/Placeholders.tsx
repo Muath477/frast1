@@ -10,10 +10,6 @@ export function IncidentsPage() {
   return <Placeholder title="Incidents" />;
 }
 
-export function DevicesPage() {
-  return <Placeholder title="Devices" />;
-}
-
 export function ServicesPage() {
   return <Placeholder title="Services" />;
 }

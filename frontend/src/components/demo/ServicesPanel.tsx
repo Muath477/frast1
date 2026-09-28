@@ -15,13 +15,14 @@ export function ServicesPanel({ services, dnsSuppressed }: Props) {
           const color = STATUS_COLOR[s.status];
           const http = s.metrics?.http_latency_ms;
           const dns = s.metrics?.dns_success_rate;
+          const dnsLat = s.metrics?.dns_latency_ms;
           const detail =
             s.id === 'svc-web' && dnsSuppressed
               ? 'impacted via DNS dependency'
               : s.id === 'svc-web' && http != null
                 ? `http ${http.toFixed?.(0) ?? http}ms`
                 : s.id === 'svc-dns' && dns != null
-                  ? `dns ${dns}%`
+                  ? `dns ${dns}%${dnsLat != null ? ` · ${Math.round(dnsLat)}ms` : ''}`
                   : s.status;
           return (
             <li
