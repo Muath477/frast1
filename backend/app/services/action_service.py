@@ -144,6 +144,7 @@ class ActionService:
         action["reason"] = reason.strip()
         action["decidedAt"] = now
         inc.timings["decidedAt"] = now
+        inc.timings["rejectedAt"] = now
         # Stay awaiting_approval with a fresh pending action
         new_action = {
             **{k: v for k, v in action.items() if k not in ("id", "approvalStatus", "decidedBy", "reason", "decidedAt", "executedAt")},

@@ -59,6 +59,12 @@ export function IncidentPanel({ incident, onClose }: Props) {
               <div className="font-mono text-sm text-info">{incident.id}</div>
               <div className="flex items-center gap-2">
                 <span
+                  data-testid="incident-status"
+                  className="font-mono text-[11px] uppercase text-slate-400"
+                >
+                  {incident.status}
+                </span>
+                <span
                   className={clsx(
                     'rounded px-1.5 py-0.5 text-[10px] uppercase',
                     incident.severity === 'critical' || incident.severity === 'high'
@@ -112,7 +118,12 @@ export function IncidentPanel({ incident, onClose }: Props) {
                         ? "DNS"
                         : "Server"}
                   </div>
-                  <div className="font-semibold text-crit">{incident.rootCause.label}</div>
+                  <div
+                    data-testid="root-cause"
+                    className="font-semibold text-crit"
+                  >
+                    {incident.rootCause.label}
+                  </div>
                   <div className="font-mono text-[11px] text-slate-400">
                     <bdi>{incident.rootCause.entityId}</bdi>
                   </div>

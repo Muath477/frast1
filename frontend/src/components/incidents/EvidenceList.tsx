@@ -23,6 +23,7 @@ export function EvidenceList({
         return (
           <li
             key={e.id}
+            data-testid="evidence-item"
             className="rounded border border-noc-line bg-noc-bg/50 px-2 py-1.5 text-[11px]"
           >
             <div className="flex justify-between font-mono">

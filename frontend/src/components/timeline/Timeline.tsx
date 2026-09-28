@@ -13,7 +13,6 @@ type Mark = {
 
 function marksFor(inc: Incident | null, demoInjected?: string | null): Mark[] {
   const t = inc?.timings ?? {};
-  const rejected = inc?.action?.approvalStatus === 'rejected' || Boolean(inc?.action?.reason);
   return [
     { key: 'inj', label: 'Injected', symbol: '▲', at: demoInjected ?? t.injectedAt, color: '#38bdf8' },
     { key: 'ano', label: 'First anomaly', symbol: '●', at: t.firstAnomalyAt ?? t.detectedAt, color: '#eab308' },
@@ -23,7 +22,8 @@ function marksFor(inc: Incident | null, demoInjected?: string | null): Mark[] {
       key: 'rej',
       label: 'Rejected',
       symbol: '✕',
-      at: rejected ? t.decidedAt : undefined,
+      // reject replaces pending action — use rejectedAt (not current action status)
+      at: t.rejectedAt,
       color: '#94a3b8',
     },
     {
@@ -88,7 +88,7 @@ export function Timeline() {
   }, [alerts, start]);
 
   return (
-    <div className="flex h-full flex-col gap-2 py-1">
+    <div data-testid="timeline" className="flex h-full flex-col gap-2 py-1">
       <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-500">
         <span>Timeline · last 5 minutes</span>
         <span className="font-mono normal-case text-slate-400">

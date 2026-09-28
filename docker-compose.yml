@@ -22,6 +22,7 @@ services:
       TOPOLOGY_PATH: /app/configs/topology.json
       LAYOUT_PATH: /app/configs/layout.json
       DATABASE_URL: postgresql+psycopg://rootiq:rootiq@db:5432/rootiq
+      ROOTIQ_MODE: sim
     ports:
       - "8000:8000"
     volumes:
@@ -30,5 +31,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
 volumes:
   pgdata: {}
