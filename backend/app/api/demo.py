@@ -53,9 +53,42 @@ async def reset(request: Request):
 
 @router.post("/mode")
 async def set_mode(body: ModeBody, request: Request):
+    """Hot-switch sim ↔ live: pause/resume simulator, reset state, broadcast snapshot."""
+    import asyncio
+
     if body.mode not in ("live", "sim"):
         raise HTTPException(status_code=400, detail="mode must be live|sim")
     st = request.app.state
+    prev = st.demo.get("mode")
     st.demo["mode"] = body.mode
+
+    # Reset operational state
+    if hasattr(st, "simulator") and st.simulator:
+        if body.mode == "sim":
+            st.simulator.paused = False
+            st.simulator.reset()
+        else:
+            st.simulator.paused = True
+            st.simulator.reset()
+    elif body.mode == "sim" and not hasattr(st, "simulator"):
+        from app.collectors.simulator import Simulator
+
+        sim = Simulator(st.pipeline)
+        st.simulator = sim
+        st.tasks.append(asyncio.create_task(sim.run()))
+
+    await st.incidents.archive_all()
+    st.detector.active.clear()
+    st.detector.alert_level.clear()
+    st.pipeline.alerts.clear()
+    st.demo.update(scenario=None, state="idle", injectedAt=None)
+
+    if body.mode == "live" and prev == "sim":
+        try:
+            await lab_client.call("/reset")
+        except Exception:
+            pass
+
     await hub.broadcast("demo", st.demo)
+    await hub.broadcast("snapshot", st.snapshot())
     return st.demo

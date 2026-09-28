@@ -5,9 +5,9 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { AuditPage } from '@/pages/AuditPage';
 import { DevicesPage } from '@/pages/DevicesPage';
 import { IncidentsPage } from '@/pages/IncidentsPage';
+import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import {
   ServicesPage,
-  AnalyticsPage,
 } from '@/pages/Placeholders';
 
 export default function App() {
