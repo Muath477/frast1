@@ -1,0 +1,8 @@
+# APP-01 — apply as /etc/netplan/01-lab.yaml then: sudo netplan apply
+network:
+  version: 2
+  ethernets:
+    eth0:
+      addresses: [10.10.20.10/24]
+      routes: [{ to: default, via: 10.10.20.1 }]
+      nameservers: { addresses: [10.10.20.10] }
