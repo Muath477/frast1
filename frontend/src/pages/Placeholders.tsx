@@ -6,10 +6,6 @@ function Placeholder({ title }: { title: string }) {
   );
 }
 
-export function IncidentsPage() {
-  return <Placeholder title="Incidents" />;
-}
-
 export function ServicesPage() {
   return <Placeholder title="Services" />;
 }
