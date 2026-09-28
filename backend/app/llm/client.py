@@ -6,16 +6,19 @@ slow, or broken — the caller then falls back to its deterministic answer.
 """
 from __future__ import annotations
 
+import logging
 import time
 
 import httpx
 
 from app.core.config import settings
 
+log = logging.getLogger("rootiq.llm")
+
 DEFAULT_MODELS = {
     "anthropic": "claude-haiku-4-5-20251001",
     "gemini": "gemini-2.5-flash",
-    "groq": "llama-3.3-70b-versatile",
+    "groq": "qwen/qwen3.8-27b",  # checked against GET /openai/v1/models on 2026-09-28; model ids change, re-check
 }
 PROVIDERS = tuple(DEFAULT_MODELS)
 
@@ -43,7 +46,11 @@ def enabled() -> bool:
 
 # Usage counters (per process) so operators can watch cost and reliability.
 # Character counts are a cheap proxy for tokens (about 4 characters per token).
-USAGE = {"calls": 0, "errors": 0, "totalMs": 0.0, "charsIn": 0, "charsOut": 0}
+USAGE = {"calls": 0, "errors": 0, "rateLimited": 0, "skipped": 0, "totalMs": 0.0, "charsIn": 0, "charsOut": 0}
+# After an HTTP 429 the provider is left alone for its Retry-After (capped), so we do not hammer it
+# and callers get their deterministic fallback immediately instead of waiting on a failing call.
+_cooldown_until = 0.0
+MAX_COOLDOWN_S = 60.0
 
 
 def usage() -> dict:
@@ -53,6 +60,7 @@ def usage() -> dict:
         "avgMs": round(USAGE["totalMs"] / calls, 1) if calls else 0.0,
         "approxTokensIn": USAGE["charsIn"] // 4,
         "approxTokensOut": USAGE["charsOut"] // 4,
+        "cooldownSeconds": round(max(0.0, _cooldown_until - time.time()), 1),
     }
 
 
@@ -135,15 +143,29 @@ _IMPL = {"anthropic": _anthropic, "gemini": _gemini, "groq": _groq}
 async def complete(
     system: str, user: str, max_tokens: int = 300, timeout: float = 6.0
 ) -> str | None:
+    global _cooldown_until
     if not enabled():
+        return None
+    if time.time() < _cooldown_until:
+        USAGE["skipped"] += 1
         return None
     t0 = time.perf_counter()
     USAGE["calls"] += 1
     USAGE["charsIn"] += len(system) + len(user)
     try:
         text = await _IMPL[settings.llm_provider](system, user, max_tokens, timeout)
-    except Exception:
+    except Exception as e:
         USAGE["errors"] += 1
+        resp = getattr(e, "response", None)
+        if getattr(resp, "status_code", None) == 429:
+            USAGE["rateLimited"] += 1
+            try:
+                wait = float(resp.headers.get("retry-after", 20))
+            except ValueError:
+                wait = 20.0
+            _cooldown_until = time.time() + min(max(wait, 1.0), MAX_COOLDOWN_S)
+        detail = getattr(resp, "text", "")[:200]
+        log.warning("LLM call failed (%s): %s %s", settings.llm_provider, type(e).__name__, detail or e)
         return None
     finally:
         USAGE["totalMs"] += (time.perf_counter() - t0) * 1000

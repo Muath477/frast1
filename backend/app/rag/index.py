@@ -98,6 +98,22 @@ def strip_md(text: str) -> str:
 _AR_STOP = "في من على الى إلى عن مع هذا هذه ذلك التي الذي هو هي ما ماذا كيف لماذا هل أن ان كان كل او أو ثم قد لا لم لن".split()
 STOP_WORDS = sorted(set(ENGLISH_STOP_WORDS) | {normalize(w) for w in _AR_STOP})
 
+METRIC_NAMES = {
+    "cpu_percent": "CPU utilization (processor load)",
+    "mem_percent": "memory utilization (RAM)",
+    "link_utilization": "link utilization (bandwidth used)",
+    "link_latency_ms": "link latency (delay)",
+    "link_packet_loss": "link packet loss",
+    "if_out_discards_rate": "interface output discards",
+    "if_oper_status": "interface operational status (up/down)",
+    "dns_success_rate": "DNS success rate",
+    "dns_latency_ms": "DNS latency",
+    "http_latency_ms": "web application HTTP latency",
+    "http_ok": "web application HTTP health",
+    "poll_timeout": "poll timeout (device did not answer)",
+    "syslog_link_down": "syslog link-down message",
+}
+
 # down-weight very large, narrative sources so focused docs win ties
 KIND_WEIGHT = {"plan": 0.6, "lab-config": 0.9}
 
@@ -308,15 +324,17 @@ class KnowledgeIndex:
     def _add_thresholds(self):
         from app.intelligence.thresholds import THRESHOLDS
 
-        lines = []
+        # One short chunk per metric so "CPU thresholds" matches the CPU chunk, not a long list.
         for m, (w, c, d) in THRESHOLDS.items():
+            human = METRIC_NAMES.get(m, m.replace("_", " "))
             if d == "up":
-                lines.append(f"{m}: warning when value >= {w}, critical when value >= {c}.")
+                rule = f"warning when value >= {w}, critical when value >= {c}"
             else:
-                lines.append(f"{m}: warning when value < {w}, critical when value <= {c}.")
-        self.add_text(
-            "threshold:all", "threshold", "app/intelligence/thresholds.py", "Detection thresholds", "\n".join(lines)
-        )
+                rule = f"warning when value < {w}, critical when value <= {c}"
+            self.add_text(
+                f"threshold:{m}", "threshold", "app/intelligence/thresholds.py", f"Threshold: {human}",
+                f"Detection threshold for {human} (metric {m}): {rule}.",
+            )
 
     def _add_playbook(self, pb: dict):
         steps = "\n".join(f"{s['n']}. [{s['kind']}] {s['title']}" for s in pb["steps"])

@@ -64,7 +64,7 @@ async def explain(kind: str, facts: dict) -> dict:
     if not llm.enabled():
         return base
     prompt = f"FACTS: {json.dumps(facts)}\nDRAFT: {base['en']}"
-    text = await llm.complete(SYSTEM, prompt, max_tokens=200, timeout=4.0)
+    text = await llm.complete(SYSTEM, prompt, max_tokens=120, timeout=4.0)
     if text and grounded(text, facts):
         return {**base, "en": text, "source": "llm"}
     return base
