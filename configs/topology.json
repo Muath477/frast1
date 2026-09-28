@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "site": "RootIQ Lab",
+  "vantage": "collector01",
+  "nodes": [
+    {
+      "id": "r1",
+      "type": "router",
+      "label": "R1",
+      "vendor": "Cisco vIOS",
+      "managementIp": "10.10.10.1",
+      "position": { "x": 420, "y": 40 },
+      "interfaces": [
+        { "name": "Gi0/0", "ifIndex": 1, "side": "bottom", "speedMbps": 10, "description": "UPLINK-TO-SW1 (shaped 10M)" },
+        { "name": "Gi0/1", "ifIndex": 2, "side": "bottom", "speedMbps": 1000, "description": "LINK-TO-SW2" }
+      ]
+    },
+    {
+      "id": "sw1",
+      "type": "switch",
+      "label": "SW1",
+      "vendor": "Cisco vIOS-L2",
+      "managementIp": "10.10.20.11",
+      "position": { "x": 180, "y": 260 },
+      "interfaces": [
+        { "name": "Gi0/1", "ifIndex": 2, "side": "top", "speedMbps": 1000 },
+        { "name": "Gi0/3", "ifIndex": 4, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "sw2",
+      "type": "switch",
+      "label": "SW2",
+      "vendor": "Cisco vIOS-L2",
+      "managementIp": "10.10.30.12",
+      "position": { "x": 660, "y": 260 },
+      "interfaces": [
+        { "name": "Gi0/1", "ifIndex": 2, "side": "top", "speedMbps": 1000 },
+        { "name": "Gi0/3", "ifIndex": 4, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "app01",
+      "type": "server",
+      "label": "APP-01",
+      "vendor": "Ubuntu 24.04",
+      "managementIp": "10.10.20.10",
+      "position": { "x": 180, "y": 480 },
+      "interfaces": [
+        { "name": "eth0", "side": "top", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "collector01",
+      "type": "collector",
+      "label": "COLLECTOR-01",
+      "vendor": "Ubuntu 24.04",
+      "managementIp": "10.10.30.10",
+      "position": { "x": 660, "y": 480 },
+      "interfaces": [
+        { "name": "ens3", "side": "top", "speedMbps": 1000 }
+      ]
+    }
+  ],
+  "links": [
+    { "id": "link-r1-sw1", "source": "r1", "sourcePort": "Gi0/0", "target": "sw1", "targetPort": "Gi0/1", "role": "uplink" },
+    { "id": "link-r1-sw2", "source": "r1", "sourcePort": "Gi0/1", "target": "sw2", "targetPort": "Gi0/1", "role": "uplink" },
+    { "id": "link-sw1-app01", "source": "sw1", "sourcePort": "Gi0/3", "target": "app01", "targetPort": "eth0", "role": "access" },
+    { "id": "link-sw2-collector01", "source": "sw2", "sourcePort": "Gi0/3", "target": "collector01", "targetPort": "ens3", "role": "access" }
+  ],
+  "services": [
+    { "id": "svc-dns", "label": "Internal DNS", "host": "app01", "port": 53, "dependsOn": [] },
+    { "id": "svc-web", "label": "Web Application", "host": "app01", "port": 80, "dependsOn": ["svc-dns"] }
+  ]
+}

@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --color-noc-bg: #0b1020;
+  --color-noc-panel: #111831;
+  --color-noc-line: #1f2a4d;
+  --color-ok: #22c55e;
+  --color-warn: #eab308;
+  --color-degraded: #f97316;
+  --color-crit: #ef4444;
+  --color-info: #38bdf8;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-noc-bg text-slate-100 antialiased;
+}
+
+@keyframes rootiq-dash {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+.rootiq-flow {
+  animation: rootiq-dash linear infinite;
+}
+
+@keyframes rootiq-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px #ef4444);
+  }
+  50% {
+    filter: drop-shadow(0 0 12px #ef4444);
+  }
+}
+
+.rootiq-cause {
+  animation: rootiq-glow 1.2s ease-in-out infinite;
+}

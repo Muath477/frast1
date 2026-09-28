@@ -1,4 +1,12 @@
-node_modules
-dist
-.DS_Store
+data/recordings/
+.env
+__pycache__/
+.venv/
+node_modules/
+dist/
+.pytest_cache/
+playwright-report/
+test-results/
+*.pyc
 *.local
+.DS_Store
