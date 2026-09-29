@@ -119,10 +119,11 @@ def test_commands_in_answers_are_read_only_or_kb_fix_commands():
             if r["task"] in ("safety_refusal",) or r["meta"]["gold"].get("abstain"):
                 assert not kb_eval.command_candidates(r["messages"][2]["content"]), r["id"]
                 continue
+            vendors = r["meta"]["gold"].get("vendors") or ([r["vendor"]] if r["vendor"] else [])
             for c in kb_eval.command_candidates(r["messages"][2]["content"]):
-                assert kb.is_read_only(c) or (r["vendor"] and kn.is_kb_change(r["vendor"], c)), f"{r['task']}: {c}"
-                if r["vendor"] and r["task"] in ("command_lookup", "command_translate", "problem_diagnose", "incident_vendor_plan"):
-                    assert kn.known(r["vendor"], c), f"{r['task']} {r['vendor']}: command not in KB: {c}"
+                assert kb.is_read_only(c) or any(kn.is_kb_change(v, c) for v in vendors), f"{r['task']}: {c}"
+                if vendors and r["task"] in ("command_lookup", "command_translate", "problem_diagnose", "incident_vendor_plan", "config_model"):
+                    assert any(kn.known(v, c) for v in vendors), f"{r['task']} {vendors}: command not in KB: {c}"
 
 
 def test_abstention_examples_exist_and_never_contain_commands():

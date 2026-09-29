@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 
 from app.knowledge import get_kb
+from app.rag.index import normalize
 
 from .base import Agent
 from .playbooks import kind_for_entity
@@ -60,6 +61,43 @@ COVERAGE_NOTE = {
 }
 
 
+CONFIG_WORDS = [normalize(k) for k in (
+    "save config", "save the config", "saving config", "save configuration", "save my config", "write memory", "startup-config", "startup config",
+    "nvram", "vram", "commit", "rollback", "roll back", "roll-back", "persist", "config mode", "configuration mode", "enter config",
+    "احفظ", "حفظ", "الحفظ", "تراجع", "استرجاع", "وضع الاعداد", "وضع الإعداد",
+)]
+STYLE_WORDS = [normalize(k) for k in (
+    "cli style", "command style", "syntax", "differ", "difference", "different", "compare",
+    "صيغه", "صيغة", "اسلوب", "أسلوب", "طريقه كتابه", "طريقة كتابة", "كتابه الاوامر", "كتابة الأوامر", "الفرق", "يختلف", "قارن",
+)]
+
+
+def find_config_topic(text: str) -> bool:
+    q = normalize(text or "")
+    return any(w in q for w in CONFIG_WORDS)
+
+
+def wants_style(text: str) -> bool:
+    q = normalize(text or "")
+    return any(w in q for w in STYLE_WORDS)
+
+
+def _config_brief(vendor: str | None, os_id: str | None) -> dict | None:
+    """How a change is applied / saved / rolled back on this device's OS (reference text for the engineer)."""
+    if not vendor:
+        return None
+    kb = get_kb()
+    cm = kb.config_model(vendor, os_id)
+    if not cm:
+        return None
+    style = kb.cli_style(vendor, os_id)
+    return {
+        "style": cm["style"], "summary": cm["summary"], "summaryAr": cm["summary_ar"], "enter": cm["enter"], "save": cm["save"],
+        "snapshot": cm["snapshot"], "safeChange": cm["safe_change"], "rollback": cm["rollback"], "notes": cm.get("notes"),
+        "cliStyle": style[0] if style else None, "cliStyleAr": style[1] if style else None,
+    }
+
+
 def _identity_brief(node: dict, ident: dict, *, role: str | None = None, interface: str | None = None) -> dict:
     return {
         "id": node["id"],
@@ -76,6 +114,7 @@ def _identity_brief(node: dict, ident: dict, *, role: str | None = None, interfa
         "netmiko": ident["netmiko"],
         "coverage": ident["coverage"],
         "confidence": ident["confidence"],
+        "configModel": _config_brief(ident["vendor"], ident["os"]),
     }
 
 
@@ -223,35 +262,61 @@ class VendorAgent(Agent):
         )
         return text, {"vendors": st["vendors"], "coverage": cov, "problems": st["problems"]}
 
-    def answer_help(self, question: str, ar: bool, overview: bool = False) -> tuple[str, dict] | None:
-        """Answer 'which command checks X on <vendor>' style questions from the KB. None if the question is not resolvable."""
+    def _os_for(self, vid: str, question: str, need_config: bool = False) -> str | None:
         kb = self.kb
-        vid, _ = kb.find_vendor(question)
+        os_id = kb.find_os(vid, question)
+        if os_id:
+            return os_id
+        oses = [o["id"] for o in kb.vendor(vid)["os_families"]]
+        if need_config:
+            return next((o for o in oses if kb.config_model(vid, o)), oses[0] if oses else None)
+        return oses[0] if oses else None
+
+    def config_answer(self, vid: str, os_id: str | None, ar: bool, with_style: bool = False) -> str:
+        """One vendor's answer to 'how do I save / commit / roll back a change' (reference text; RootIQ never runs it)."""
+        return self.kb.describe_config(vid, os_id, ar, with_style=with_style)
+
+    def _capability_sentence(self, vid: str, os_id: str | None, cap: str, ar: bool) -> tuple[str, int]:
+        kb = self.kb
+        v, desc = kb.vendor(vid), kb.capabilities[cap]
+        entry = kb.commands(vid, os_id, cap)
+        if entry and entry.get("read"):
+            cmds = " ; ".join(entry["read"][:3]).replace("<if>", "<interface>")
+            return (f"{desc} على {v['name']} ({os_id}): {cmds}." if ar else f"{desc} on {v['name']} ({os_id}): {cmds}."), len(entry["read"])
+        return (
+            (f"لا توجد أوامر مُعدّة لـ«{desc}» على {v['name']} بعد (التغطية: {v['coverage']}). راجع وثائق المصنّع." if ar
+             else f"No curated command for '{desc}' on {v['name']} yet (coverage: {v['coverage']}). Check the vendor documentation."), 0)
+
+    def answer_help(self, question: str, ar: bool, overview: bool = False) -> tuple[str, dict] | None:
+        """Answer 'which command / how do I save / what is the difference' questions from the KB. None if not resolvable.
+
+        Several vendors named in one question are answered side by side (Cisco vs Junos vs FortiGate ...).
+        """
+        kb = self.kb
+        vids = kb.find_vendors(question, limit=4)
         pid = kb.find_problem(question)
-        if overview and vid is None:
+        if overview and not vids:
             return self.overview(ar)
-        if vid is None and pid is None:
+        if not vids and pid is None:
             return None
+        footer = " هذه أوامر مرجعية للمهندس؛ RootIQ لا ينفّذها." if ar else " These are reference commands for the engineer; RootIQ does not run them."
+
+        if vids and find_config_topic(question):
+            texts = [self.config_answer(v, self._os_for(v, question, True), ar, wants_style(question)) for v in vids]
+            return " ".join(texts) + footer, {"vendors": vids, "topic": "config_model"}
+
+        cap = find_capability(question) if vids and pid is None else None
+        if vids and cap:
+            sentences, n = [], 0
+            for v in vids:
+                sent, k = self._capability_sentence(v, self._os_for(v, question), cap, ar)
+                sentences.append(sent)
+                n += k
+            tail = (" أوامر فحص فقط؛ RootIQ لا ينفّذها." if ar else " Inspection commands only; RootIQ does not run them.") if n else ""
+            return " ".join(sentences) + tail, {"vendors": vids, "capability": cap, "commands": n}
+
+        vid = vids[0] if vids else None
         v = kb.vendor(vid) if vid else None
-        cap = find_capability(question) if v and pid is None else None
-        if v and cap:
-            os_id = kb.find_os(vid, question) or (v["os_families"][0]["id"] if v["os_families"] else None)
-            entry = kb.commands(vid, os_id, cap)
-            desc = kb.capabilities[cap]
-            if entry and entry.get("read"):
-                cmds = " ; ".join(entry["read"][:3]).replace("<if>", "<interface>")
-                text = (
-                    f"{desc} على {v['name']} ({os_id}): {cmds}. أوامر فحص فقط؛ RootIQ لا ينفّذها."
-                    if ar else
-                    f"{desc} on {v['name']} ({os_id}): {cmds}. Inspection commands only; RootIQ does not run them."
-                )
-                return text, {"vendor": vid, "os": os_id, "capability": cap, "commands": len(entry["read"])}
-            text = (
-                f"لا توجد أوامر مُعدّة لـ«{desc}» على {v['name']} بعد (التغطية: {v['coverage']}). راجع وثائق المصنّع."
-                if ar else
-                f"No curated command for '{desc}' on {v['name']} yet (coverage: {v['coverage']}). Check the vendor documentation."
-            )
-            return text, {"vendor": vid, "capability": cap, "commands": 0}
         if v and pid is None:
             os_list = ", ".join(o["name"] for o in v["os_families"]) or "-"
             series = "; ".join(s["name"] for s in v["series"][:6])
@@ -267,7 +332,7 @@ class VendorAgent(Agent):
             causes = "; ".join(p["causes"][:3])
             text = (f"{title}: {p['summary_ar']} أسباب شائعة: {causes}." if ar else f"{title}: {p['summary']} Common causes: {causes}.")
             return text, {"problem": pid}
-        os_id = kb.find_os(vid, question) or (v["os_families"][0]["id"] if v["os_families"] else None)
+        os_id = self._os_for(vid, question)
         checks = [c for c in kb.checks_for(pid, vid, os_id) if c["available"]][:4]
         if not checks:
             text = (

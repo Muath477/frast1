@@ -8,7 +8,12 @@
     "srx",
     "qfx",
     "جونيبر",
-    "جنيبر"
+    "جنيبر",
+    "vqfx",
+    "vmx",
+    "vsrx",
+    "vjunos",
+    "vjunosevolved"
   ],
   "categories": [
     "switching",
@@ -42,13 +47,37 @@
       "version_scheme": "YY.QRn[-Sn.n]: release year.quarter, R = release, then respin (R3) and service release (-S5.4), e.g. 21.4R3-S5.4. Commonly one release per quarter; EX/QFX trains follow the same scheme.",
       "examples": {
         "sysdescr": [
-          "Juniper Networks, Inc. ex4300-48t Ethernet Switch, kernel JUNOS 21.4R3-S5.4, Build date: 2023-06-01 10:00:00 UTC Copyright (c) 1996-2023 Juniper Networks, Inc."
+          "Juniper Networks, Inc. ex4300-48t Ethernet Switch, kernel JUNOS 21.4R3-S5.4, Build date: 2023-06-01 10:00:00 UTC Copyright (c) 1996-2023 Juniper Networks, Inc.",
+          "Juniper Networks, Inc. vqfx-10000 Ethernet Switch, kernel JUNOS 19.4R1.10, Build date: 2019-12-19 03:28:44 UTC Copyright (c) 1996-2019 Juniper Networks, Inc."
         ],
         "version": [
           "21.4R3-S5.4",
-          "23.2R2"
+          "23.2R2",
+          "19.4R1.10"
         ]
-      }
+      },
+      "config_model": {
+        "style": "candidate-commit",
+        "summary": "Changes are made in a candidate configuration and become active only on `commit`; a committed configuration is persistent, so there is no separate save step.",
+        "summary_ar": "التغييرات تتم في إعداد مرشّح (candidate) ولا تصير فعّالة إلا عند `commit`؛ والإعداد المُلتزَم به دائم فلا توجد خطوة حفظ منفصلة.",
+        "enter": [
+          "configure"
+        ],
+        "save": [
+          "commit"
+        ],
+        "snapshot": [],
+        "safe_change": [
+          "commit confirmed 5"
+        ],
+        "rollback": [
+          "rollback 1",
+          "commit"
+        ],
+        "notes": "`show | compare` shows the pending changes and `commit check` validates them. `commit confirmed 5` rolls back by itself unless a second `commit` confirms within 5 minutes. Up to 50 earlier versions are kept (`rollback 0` to `rollback 49`)."
+      },
+      "cli_style": "Two modes: operational and configuration (`configure`). Hierarchical `set` / `delete` statements. Useful pipes: `| compare`, `| match`, `| display set`, `| no-more`. `run <cmd>` executes an operational command from configuration mode. Interfaces are `ge-0/0/1`, `xe-0/0/1`, `ae0`, with logical units (`.0`).",
+      "cli_style_ar": "وضعان: تشغيلي وإعدادي (`configure`). أوامر `set` و`delete` هرمية. فلاتر مفيدة: `| compare` و`| match` و`| display set` و`| no-more`. `run <cmd>` ينفّذ أمرًا تشغيليًا من داخل وضع الإعداد. الواجهات `ge-0/0/1` و`xe-0/0/1` و`ae0` مع وحدات منطقية (`.0`)."
     }
   ],
   "series": [
@@ -249,6 +278,13 @@
       "event": "bgp_neighbor_change",
       "severity": "warning",
       "example": "rpd[500]: RPD_BGP_NEIGHBOR_STATE_CHANGED: BGP peer 10.1.1.1 (External AS 65001) changed state from Established to Idle (event HoldTime)"
+    },
+    {
+      "id": "ui-commit",
+      "regex": "UI_COMMIT:\\s*User '(?P<user>[^']+)' requested 'commit' operation",
+      "event": "config_change",
+      "severity": "info",
+      "example": "mgd[1234]: UI_COMMIT: User 'admin' requested 'commit' operation (comment: fix uplink)"
     }
   ],
   "advisories": {

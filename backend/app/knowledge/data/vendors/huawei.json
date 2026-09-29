@@ -48,7 +48,24 @@
           "5.170",
           "8.191"
         ]
-      }
+      },
+      "config_model": {
+        "style": "running-startup",
+        "summary": "S-series (VRP5): changes apply immediately and are lost at reload unless saved with `save`. CE/NE (VRP8) stage changes until `commit`.",
+        "summary_ar": "سلسلة S (VRP5): التغييرات تسري فورًا وتضيع عند إعادة التشغيل ما لم تُحفظ بـ`save`. أما CE/NE (VRP8) فتُجمَّع التغييرات حتى `commit`.",
+        "enter": [
+          "system-view"
+        ],
+        "save": [
+          "save"
+        ],
+        "snapshot": [],
+        "safe_change": [],
+        "rollback": [],
+        "notes": "Verify which VRP generation the device runs before relying on `commit`."
+      },
+      "cli_style": "`display` instead of `show`, `undo` instead of `no`; views: user-view `<host>` and system-view `[host]`; `display this` shows the configuration of the current view; interfaces `GigabitEthernet0/0/1`, `10GE1/0/1`.",
+      "cli_style_ar": "`display` بدل `show` و`undo` بدل `no`؛ العروض: user-view `<host>` وsystem-view `[host]`؛ `display this` يعرض إعداد العرض الحالي؛ الواجهات `GigabitEthernet0/0/1` و`10GE1/0/1`."
     }
   ],
   "series": [

@@ -15,6 +15,7 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 COVERAGE = ("full", "partial", "profile-only")
 CONFIDENCE = ("high", "medium", "low")
 CHANGE_CAPABILITIES = {"clear_counters", "bounce_interface"}
+CONFIG_STYLES = ("running-startup", "candidate-commit", "auto-save")
 ROOTIQ_KINDS = {None, "link", "svc-dns", "server"}
 SEVERITY_ORDER = {"critical": 3, "high": 2, "medium": 1, "low": 0}
 
@@ -90,6 +91,58 @@ class KnowledgeBase:
             if rx.search(t):
                 return vid, n
         return None, 0
+
+    def find_vendors(self, text: str, limit: int = 4) -> list[str]:
+        """Every distinct vendor named in the text (longest aliases first), for questions that compare vendors."""
+        t = _norm(text)
+        first: dict[str, int] = {}
+        for rx, vid, _ in self._alias_res:
+            m = rx.search(t)
+            if m and (vid not in first or m.start() < first[vid]):
+                first[vid] = m.start()
+        return sorted(first, key=first.get)[:limit]  # in the order the user mentioned them
+
+    def config_model(self, vendor_id: str, os_id: str | None) -> dict | None:
+        """How a change is applied, saved and rolled back on this OS (reference text, never executed by RootIQ)."""
+        o = self.os_family(vendor_id, os_id) if os_id else None
+        return (o or {}).get("config_model")
+
+    def cli_style(self, vendor_id: str, os_id: str | None) -> tuple[str, str] | None:
+        o = self.os_family(vendor_id, os_id) if os_id else None
+        return (o["cli_style"], o.get("cli_style_ar", o["cli_style"])) if o and o.get("cli_style") else None
+
+    CONFIG_PARTS = ("summary", "enter", "save", "snapshot", "safe_change", "rollback")
+
+    def describe_config(self, vendor_id: str, os_id: str | None, ar: bool = False, parts=None, with_style: bool = False) -> str:
+        """Plain-text description of how a change is applied / saved / rolled back on one OS (used by the Copilot and the training data)."""
+        v, o = self.vendor(vendor_id), self.os_family(vendor_id, os_id)
+        head = f"{v['name']} ({o['name'] if o else os_id})"
+        cm = self.config_model(vendor_id, os_id)
+        if not cm:
+            return (f"{head}: لا توجد أوامر مُعدّة أو ملاحظات إعداد بعد؛ راجع وثائق المصنّع." if ar
+                    else f"{head}: no curated command or configuration notes yet; check the vendor documentation.")
+        want = set(parts or self.CONFIG_PARTS)
+        cmds = lambda key: " ; ".join(f"`{c}`" for c in cm[key])
+        out = []
+        if "summary" in want:
+            out.append(cm["summary_ar" if ar else "summary"])
+        if "enter" in want and cm["enter"]:
+            out.append(("الدخول إلى وضع الإعداد: " if ar else "Enter configuration mode: ") + cmds("enter") + ".")
+        if "save" in want:
+            if cm["save"]:
+                out.append(("للحفظ أو التفعيل: " if ar else "To save / activate: ") + cmds("save") + ".")
+            elif cm["style"] == "auto-save":
+                out.append("لا توجد خطوة حفظ منفصلة." if ar else "There is no separate save step.")
+        if "snapshot" in want and cm["snapshot"]:
+            out.append(("نقطة استرجاع قبل التغيير: " if ar else "Restore point before a change: ") + cmds("snapshot") + ".")
+        if "safe_change" in want and cm["safe_change"]:
+            out.append(("تغيير أكثر أمانًا: " if ar else "Safer change: ") + cmds("safe_change") + ".")
+        if "rollback" in want and cm["rollback"]:
+            out.append(("للتراجع: " if ar else "To roll back: ") + cmds("rollback") + ".")
+        style = self.cli_style(vendor_id, os_id) if with_style else None
+        if style:
+            out.append(("أسلوب الأوامر: " if ar else "CLI style: ") + style[1 if ar else 0])
+        return f"{head}: " + " ".join(out)
 
     def find_os(self, vendor_id: str, text: str) -> str | None:
         t = _norm(text)
@@ -297,6 +350,7 @@ class KnowledgeBase:
         vid, pat, m = hits[0]
         g = {k: v for k, v in m.groupdict().items() if v}
         state = (pat.get("state") or g.get("state") or "").lower() or None
+        state = (pat.get("state_map") or {}).get(state, state)  # e.g. Aruba "off-line" -> "down"
         return {
             "event": pat["event"], "vendor": vid, "pattern": pat["id"], "severity": pat.get("severity", "info"),
             "interface": g.get("interface"), "state": state,
@@ -347,6 +401,23 @@ class KnowledgeBase:
             for o_id in v.get("default_for", []):
                 if o_id not in os_ids:
                     errs.append(f"{vid}: default_for references unknown OS '{o_id}'")
+                elif v.get("coverage") == "full" and not self.config_model(vid, o_id):
+                    errs.append(f"{vid}/{o_id}: full-coverage vendors need a config_model for every default OS")
+            for o in v.get("os_families", []):
+                cm = o.get("config_model")
+                if cm is not None:
+                    for key in ("style", "summary", "summary_ar", "enter", "save", "snapshot", "safe_change", "rollback"):
+                        if key not in cm:
+                            errs.append(f"{vid}/{o['id']}: config_model missing '{key}'")
+                    if cm.get("style") not in CONFIG_STYLES:
+                        errs.append(f"{vid}/{o['id']}: bad config_model style {cm.get('style')!r}")
+                    for key in ("enter", "save", "snapshot", "safe_change", "rollback"):
+                        if not all(isinstance(c, str) and c.strip() for c in cm.get(key, [])):
+                            errs.append(f"{vid}/{o['id']}: config_model.{key} must be a list of non-empty strings")
+                    if cm.get("style") == "running-startup" and not cm.get("save"):
+                        errs.append(f"{vid}/{o['id']}: a running-startup OS needs a save command")
+                if o.get("cli_style") and not o.get("cli_style_ar"):
+                    errs.append(f"{vid}/{o['id']}: cli_style needs an Arabic cli_style_ar")
             if v.get("commands", {}).get("default") and not v.get("default_for"):
                 errs.append(f"{vid}: has a default command table but no default_for")
             for o in v.get("os_families", []):

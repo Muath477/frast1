@@ -45,6 +45,7 @@ IF_SAMPLES = {
     "hpe-aruba": ["1/1/1", "1/1/24", "A1", "24"], "mikrotik": ["ether1", "sfp-sfpplus1"], "extreme": ["1:5", "2:12"],
     "dell": ["ethernet1/1/1", "Te1/0/1"], "fortinet": ["port1", "port24"], "nvidia": ["swp1", "swp12", "Eth1/1"], "linux": ["eth0", "ens3", "enp3s0"],
 }
+PRIORITY = {"cisco", "juniper", "fortinet", "hpe-aruba", "arista"}  # the vendors named by the field engineers (Cisco is also the EVE-NG lab)
 NOISE_PREFIX = ["", "", "Sep 29 10:02:11 ", "Sep 29 10:02:11 sw-core-01 ", "<188>Sep 29 10:02:11 edge-sw2 ", "2026-09-29T10:02:11Z lab-sw1 "]
 UNKNOWN_DEVICES = ["Acme Widgets 9000 Ethernet Switch", "Generic Layer2 Switch firmware 1.0.3", "Contoso NetBox SW-24 rev B", "unknown appliance", "Frobnicator OS 4.2"]
 UNRELATED_LOGS = [
@@ -269,6 +270,7 @@ def gen_translate(kb, rng):
                 if av != bv:
                     pairs.append((cap, av, ao, ac, bv, bo, bc))
     rng.shuffle(pairs)
+    pairs.sort(key=lambda t: -((t[1] in PRIORITY) + (t[4] in PRIORITY)))  # stable: the vendors people actually run come first
     for cap, av, ao, ac, bv, bo, bc in pairs[:650]:
         a, b = kb.vendor(av), kb.vendor(bv)
         ca, cb = show_if(ac, None)[0], show_if(bc, None)
@@ -423,7 +425,74 @@ def gen_safety(kb, rng):
     return rows
 
 
-GENERATORS = (gen_identify, gen_syslog, gen_commands, gen_translate, gen_problems, gen_profiles, gen_versions, gen_plans, gen_safety)
+def gen_config(kb, rng):
+    """How a change is applied / saved / rolled back and how the CLI is written: the part that differs most between vendors."""
+    rows = []
+    QS = {"en": "How do I save configuration changes on {v} ({o})?", "ar": "كيف أحفظ تغييرات الإعداد على {v} ({o})؟"}
+    QR = {"en": "How can I make a risky change on {v} ({o}) and undo it if it goes wrong?", "ar": "كيف أُجري تغييرًا محفوفًا بالمخاطر على {v} ({o}) وأتراجع عنه إذا فشل؟"}
+    QC = {"en": "What is the CLI style of {v} ({o}) and how is it different from Cisco IOS?", "ar": "ما أسلوب أوامر {v} ({o}) وكيف يختلف عن Cisco IOS؟"}
+    QD = {"en": "What is the difference between saving configuration on {a} ({ao}) and on {b} ({bo})?",
+          "ar": "ما الفرق بين حفظ الإعداد على {a} ({ao}) وعلى {b} ({bo})؟"}
+    NO_ROLLBACK = {
+        "en": "No curated command for rolling back a change on {head} yet; do not save until the change is verified, and check the vendor documentation.",
+        "ar": "لا توجد أوامر مُعدّة للتراجع عن تغيير على {head} بعد؛ لا تحفظ قبل التحقق من التغيير، وراجع وثائق المصنّع.",
+    }
+    modeled = []
+    for vid, v in kb.vendors.items():
+        for o in v["os_families"]:
+            cm = kb.config_model(vid, o["id"])
+            if not cm:
+                continue
+            modeled.append((vid, o["id"]))
+            head = f"{v['name']} ({o['name']})"
+            for lang in ("en", "ar"):
+                ar = lang == "ar"
+                fmt = dict(v=v["name"], o=o["name"])
+                save_must = cm["save"][:2] or (["لا توجد خطوة حفظ منفصلة"] if ar else ["no separate save step"])
+                rows.append(row("config_model", lang, vid, f"cfg/{vid}/{o['id']}/save", QS[lang].format(**fmt),
+                                kb.describe_config(vid, o["id"], ar, parts=("summary", "enter", "save")),
+                                {"vendor": vid, "os": o["id"], "topic": "save", "abstain": False}, must_include=save_must))
+                risky = cm["safe_change"][:1] + cm["rollback"][:1] + cm["snapshot"][:1]
+                if risky:
+                    rows.append(row("config_model", lang, vid, f"cfg/{vid}/{o['id']}/rollback", QR[lang].format(**fmt),
+                                    kb.describe_config(vid, o["id"], ar, parts=("snapshot", "safe_change", "rollback")),
+                                    {"vendor": vid, "os": o["id"], "topic": "rollback", "abstain": False}, must_include=risky))
+                else:
+                    rows.append(row("config_model", lang, vid, f"cfg/{vid}/{o['id']}/rollback", QR[lang].format(**fmt),
+                                    NO_ROLLBACK[lang].format(head=head),
+                                    {"vendor": vid, "os": o["id"], "topic": "rollback", "abstain": True}))
+                style = kb.cli_style(vid, o["id"])
+                if style:
+                    must = re.findall(r"`([^`]+)`", style[0])[:2]
+                    text = f"{head}: " + (("أسلوب الأوامر: " + style[1]) if ar else ("CLI style: " + style[0]))
+                    rows.append(row("config_model", lang, vid, f"cfg/{vid}/{o['id']}/style", QC[lang].format(**fmt), text,
+                                    {"vendor": vid, "os": o["id"], "topic": "style", "abstain": False}, must_include=must))
+    # side-by-side: pairs of different vendors
+    pairs = [(a, b) for a in modeled for b in modeled if a[0] != b[0]]
+    rng.shuffle(pairs)
+    for (av, ao), (bv, bo) in pairs[:60]:
+        a, b = kb.vendor(av), kb.vendor(bv)
+        aos, bos = kb.os_family(av, ao), kb.os_family(bv, bo)
+        for lang in ("en", "ar"):
+            ar = lang == "ar"
+            ans = (kb.describe_config(av, ao, ar, parts=("summary", "save")) + " " + kb.describe_config(bv, bo, ar, parts=("summary", "save")))
+            must = kb.config_model(av, ao)["save"][:1] + kb.config_model(bv, bo)["save"][:1]
+            rows.append(row("config_model", lang, bv, f"cfgcmp/{av}>{bv}/{ao}/{bo}",
+                            QD[lang].format(a=a["name"], ao=aos["name"], b=b["name"], bo=bos["name"]), ans,
+                            {"vendor": bv, "vendors": [av, bv], "os": bo, "topic": "compare", "abstain": False}, must_include=must))
+    # abstention: vendors/OS families without curated configuration notes
+    unmodeled = [(vid, o["id"]) for vid, v in kb.vendors.items() for o in v["os_families"] if (vid, o["id"]) not in set(modeled)]
+    rng.shuffle(unmodeled)
+    for vid, os_id in unmodeled[:40]:
+        v, o = kb.vendor(vid), kb.os_family(vid, os_id)
+        for lang in ("en", "ar"):
+            rows.append(row("config_model", lang, vid, f"cfg-abstain/{vid}/{os_id}", QS[lang].format(v=v["name"], o=o["name"]),
+                            kb.describe_config(vid, os_id, lang == "ar"),
+                            {"vendor": vid, "os": os_id, "topic": "save", "abstain": True}))
+    return rows
+
+
+GENERATORS = (gen_identify, gen_syslog, gen_commands, gen_translate, gen_problems, gen_profiles, gen_versions, gen_plans, gen_config, gen_safety)
 
 
 # ------------------------------------------------------------------ assembly

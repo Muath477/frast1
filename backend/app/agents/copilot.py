@@ -80,6 +80,9 @@ def detect_lang(text: str) -> str:
 VENDOR_CUES = [normalize(k) for k in (
     "command", "commands", "cli", "syntax", "how to check", "how do i check", "how can i check", "which command",
     "how do i show", "how to show", "how do i see", "how can i see", "how do i view", "how to view", "what shows",
+    "save config", "save the config", "write memory", "startup-config", "nvram", "vram", "commit", "rollback", "roll back", "config mode",
+    "difference between", "cli style", "command style",
+    "احفظ", "حفظ الاعداد", "حفظ الإعداد", "حفظ الكونفج", "الفرق بين", "طريقة كتابة الاوامر", "طريقة كتابة الأوامر", "اسلوب الاوامر", "أسلوب الأوامر",
     "أمر", "أوامر", "امر", "اوامر", "كيف افحص", "كيف أفحص", "كيف اتحقق", "كيف أتحقق",
 )]
 VENDOR_OVERVIEW = [normalize(k) for k in (

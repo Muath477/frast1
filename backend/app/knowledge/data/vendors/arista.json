@@ -5,7 +5,10 @@
     "arista",
     "eos",
     "dcs-",
-    "اريستا"
+    "اريستا",
+    "veos",
+    "ceos",
+    "veos-lab"
   ],
   "categories": [
     "switching",
@@ -36,13 +39,39 @@
       "version_scheme": "MAJOR.MINOR.PATCH + suffix, e.g. 4.30.5M (M = maintenance/long-term train, F = feature release).",
       "examples": {
         "sysdescr": [
-          "Arista Networks EOS version 4.30.5M running on an Arista Networks DCS-7050SX3-48YC8"
+          "Arista Networks EOS version 4.30.5M running on an Arista Networks DCS-7050SX3-48YC8",
+          "Arista Networks EOS version 4.30.5M running on an Arista Networks vEOS-lab"
         ],
         "version": [
           "4.30.5M",
           "4.32.1F"
         ]
-      }
+      },
+      "config_model": {
+        "style": "running-startup",
+        "summary": "Changes take effect immediately in the running configuration. They are lost at reload unless they are copied to the startup configuration (NVRAM).",
+        "summary_ar": "التغييرات تسري فورًا على الإعداد الجاري (running) وتضيع عند إعادة التشغيل ما لم تُنسخ إلى إعداد الإقلاع (startup / NVRAM).",
+        "enter": [
+          "configure terminal"
+        ],
+        "save": [
+          "write memory",
+          "copy running-config startup-config"
+        ],
+        "snapshot": [
+          "copy running-config flash:<backup>"
+        ],
+        "safe_change": [
+          "configure session <name>",
+          "commit timer 00:05:00"
+        ],
+        "rollback": [
+          "configure replace flash:<backup>"
+        ],
+        "notes": "Optional config sessions: `configure session <name>`, `show session-config diffs`, then `commit timer 00:05:00` (auto-revert unless confirmed) or `abort`."
+      },
+      "cli_style": "Cisco-like modal CLI. `show ... | json` returns JSON; `| grep` and `| include` filter. Optional config sessions add diff and timed commit. Interfaces: `Ethernet1`, `Ethernet1/1`, `Port-Channel1`, `Management1`.",
+      "cli_style_ar": "واجهة شبيهة بـCisco متعددة الأوضاع. `show ... | json` يعيد JSON، و`| grep` و`| include` للفلترة. جلسات الإعداد الاختيارية تضيف المقارنة والالتزام المؤقت. الواجهات: `Ethernet1` و`Ethernet1/1` و`Port-Channel1` و`Management1`."
     }
   ],
   "series": [
@@ -212,6 +241,13 @@
       "event": "stp_port_state",
       "severity": "info",
       "example": "%SPANTREE-6-INTERFACE_STATE: Interface Ethernet1 instance MST0 moved from forwarding to blocking"
+    },
+    {
+      "id": "config-i",
+      "regex": "%SYS-5-CONFIG_I:\\s*Configured from\\s+(?P<source>\\S+)\\s+by\\s+(?P<user>\\S+)",
+      "event": "config_change",
+      "severity": "info",
+      "example": "%SYS-5-CONFIG_I: Configured from console by admin on vty0 (10.0.0.5)"
     }
   ],
   "advisories": {

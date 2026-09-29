@@ -77,7 +77,7 @@ Run in this order and check the expected output before moving on:
   C1                 downloads the base model (several GB, several minutes), prints the GPU name, "BEFORE training: {...}" and
                      "BEFORE training, vendor knowledge: {...}" (two blocks: seen / unseen; this generation step takes a few minutes).
                      Report ccna.accuracy, single_answer_accuracy, the grounding numbers and both vendor-knowledge blocks as printed
-                     (identify_exact, syslog_exact, command_lookup, problem_diagnose, refusal, invented_command_rate, unsafe_command_count).
+                     (identify_exact, syslog_exact, command_lookup, problem_diagnose, config_model, refusal, invented_command_rate, unsafe_command_count).
                      Before training these numbers are expected to be LOW: that is the baseline.
   C2                 trains 20 steps. Report the first and last loss values you see; loss should go down. Ends with
                      "LoRA adapter saved to ...".
@@ -90,7 +90,7 @@ After D1: send me the PHASE 1 REPORT (format below) and STOP. Wait for my decisi
 PHASE 2 — FULL RUN (only after I say "full run")
   - Tell me first what will change: SMOKE=False means ~55 topics x 2 languages of teacher calls (slow: Groq free tier limits
     output tokens per minute, the notebook waits on HTTP 429 and caches every answer on Drive), full CCNA evaluation
-    (343 questions), the full vendor-knowledge data (~3.7k training rows) and 2 training epochs. Ask me to confirm the compute-unit cost of keeping a GPU attached.
+    (343 questions), the full vendor-knowledge data (~4.1k training rows) and 2 training epochs. Ask me to confirm the compute-unit cost of keeping a GPU attached.
   - Cheapest order: run cells 1, 2, 3, A1, A2, B0, B1, B2, B3, B4, B5 with SMOKE=False on a CPU runtime (ask me before changing
     the runtime type). Then change the runtime to T4 GPU (this restarts it) and run 1, 2, 3, B0, B1, B2 (cached, free), then
     C0, C0b, C1, C2, D1 (train.jsonl and the KB test files are already on Drive from B5).
@@ -130,7 +130,7 @@ ERROR PLAYBOOK
 REPORT FORMAT (Arabic; short)
   [المرحلة] الحالة (نجح/فشل/بانتظارك) — المدة — الأرقام الأهم — أي تحذير — الخطوة التالية.
   PHASE 1 REPORT and FINAL REPORT also include: a small table of the numbers (A2 metrics; teacher CCNA accuracy; before vs after
-  CCNA accuracy and grounding; before vs after vendor knowledge (identify_exact, syslog_exact, command_lookup, problem_diagnose,
+  CCNA accuracy and grounding; before vs after vendor knowledge (identify_exact, syslog_exact, command_lookup, problem_diagnose, config_model,
   invented_command_rate, unsafe_command_count); kb_rules; DECISION), the edit log (or "no edits"), the Drive files seen with sizes, the number of
   runtime disconnects, and the compute units used if visible.
   Never claim a result you did not see in an output. If you could not read something, say so.

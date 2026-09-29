@@ -1,7 +1,45 @@
 import { useState } from 'react';
-import type { VendorCommands, VendorDiagnose } from '@/lib/types';
+import type { ConfigModel, VendorCommands, VendorDiagnose } from '@/lib/types';
 
-function DeviceBlock({ d, label }: { d: VendorDiagnose; label: string }) {
+const STYLE_LABEL: Record<ConfigModel['style'], string> = {
+  'running-startup': 'running → startup (save separately)',
+  'candidate-commit': 'candidate → commit',
+  'auto-save': 'applied and saved immediately',
+};
+
+function Cmds({ label, items }: { label: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <p className="text-slate-400">
+      {label}{' '}
+      {items.map((c) => (
+        <code key={c} className="me-1 break-all text-[10px] text-info">
+          {c}
+        </code>
+      ))}
+    </p>
+  );
+}
+
+/** How a change is applied and saved on this device: the part that differs most between vendors. */
+function ConfigBlock({ cm }: { cm: ConfigModel }) {
+  return (
+    <div className="mt-1 rounded border border-noc-line/50 px-1.5 py-1" data-testid="config-model">
+      <p className="text-slate-300">
+        Applying a change: <span className="text-warn">{STYLE_LABEL[cm.style]}</span>
+      </p>
+      <p className="text-slate-500">{cm.summary}</p>
+      <Cmds label="Enter config:" items={cm.enter} />
+      <Cmds label="Save / activate:" items={cm.save} />
+      <Cmds label="Restore point:" items={cm.snapshot} />
+      <Cmds label="Safer change:" items={cm.safeChange} />
+      <Cmds label="Roll back:" items={cm.rollback} />
+      {cm.cliStyle && <p className="text-slate-500">CLI style: {cm.cliStyle}</p>}
+    </div>
+  );
+}
+
+function DeviceBlock({ d, label, cm }: { d: VendorDiagnose; label: string; cm?: ConfigModel | null }) {
   const usable = d.checks.filter((c) => c.available);
   return (
     <div className="rounded border border-noc-line/60 px-2 py-1.5">
@@ -25,6 +63,7 @@ function DeviceBlock({ d, label }: { d: VendorDiagnose; label: string }) {
           </li>
         ))}
       </ul>
+      {cm && <ConfigBlock cm={cm} />}
     </div>
   );
 }
@@ -32,7 +71,7 @@ function DeviceBlock({ d, label }: { d: VendorDiagnose; label: string }) {
 /** Vendor-specific reference commands for the devices involved. Read-only; RootIQ does not run them. */
 export function VendorCommandsView({ vc }: { vc: VendorCommands }) {
   const [open, setOpen] = useState(false);
-  const labels = Object.fromEntries(vc.devices.map((d) => [d.id, d.label]));
+  const byId = Object.fromEntries(vc.devices.map((d) => [d.id, d]));
   return (
     <div className="rounded border border-noc-line/60 bg-noc-bg/30" data-testid="vendor-commands">
       <button
@@ -49,7 +88,7 @@ export function VendorCommandsView({ vc }: { vc: VendorCommands }) {
       {open && (
         <div className="space-y-1.5 border-t border-noc-line/60 px-2 py-2">
           {vc.diagnose.map((d) => (
-            <DeviceBlock key={d.device} d={d} label={labels[d.device] ?? d.device} />
+            <DeviceBlock key={d.device} d={d} label={byId[d.device]?.label ?? d.device} cm={byId[d.device]?.configModel} />
           ))}
           {vc.fixes
             .filter((f) => f.commands.length > 0)

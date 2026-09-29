@@ -57,6 +57,19 @@
           "22.7.1.4",
           "31.7.1.4"
         ]
+      },
+      "config_model": {
+        "style": "running-startup",
+        "summary": "Changes apply immediately to the running configuration and are lost at reload unless saved with `save configuration`.",
+        "summary_ar": "التغييرات تسري فورًا وتضيع عند إعادة التشغيل ما لم تُحفظ بـ`save configuration`.",
+        "enter": [],
+        "save": [
+          "save configuration"
+        ],
+        "snapshot": [],
+        "safe_change": [],
+        "rollback": [],
+        "notes": "EXOS has no configuration mode: configuration commands are typed in the normal CLI."
       }
     },
     {

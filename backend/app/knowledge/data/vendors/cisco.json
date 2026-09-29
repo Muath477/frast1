@@ -51,7 +51,32 @@
           "17.09.04a",
           "16.12.4"
         ]
-      }
+      },
+      "config_model": {
+        "style": "running-startup",
+        "summary": "Changes take effect immediately in the running configuration. They are lost at reload unless they are copied to the startup configuration (NVRAM).",
+        "summary_ar": "التغييرات تسري فورًا على الإعداد الجاري (running) وتضيع عند إعادة التشغيل ما لم تُنسخ إلى إعداد الإقلاع (startup / NVRAM).",
+        "enter": [
+          "configure terminal"
+        ],
+        "save": [
+          "copy running-config startup-config",
+          "write memory"
+        ],
+        "snapshot": [
+          "copy running-config flash:<backup>"
+        ],
+        "safe_change": [
+          "reload in 5",
+          "reload cancel"
+        ],
+        "rollback": [
+          "configure replace flash:<backup> force"
+        ],
+        "notes": "`reload in 5` before a risky change reloads the switch back to the saved startup configuration unless you cancel it; do not save until the change is verified."
+      },
+      "cli_style": "Modal CLI (user EXEC, privileged EXEC, global config, interface config). Unique prefixes are accepted (`sh int gi0/1`). In configuration mode put `do` in front of a show command. Filters: `| include`, `| section`, `| begin`.",
+      "cli_style_ar": "واجهة أوامر متعددة الأوضاع (User ثم Privileged ثم Global config ثم Interface). تُقبل الاختصارات الفريدة (`sh int gi0/1`). داخل وضع الإعداد ضع `do` قبل أمر show. الفلترة: `| include` و`| section` و`| begin`."
     },
     {
       "id": "ios",
@@ -80,7 +105,32 @@
           "15.0(2)SE11",
           "15.2(4)E10"
         ]
-      }
+      },
+      "config_model": {
+        "style": "running-startup",
+        "summary": "Changes take effect immediately in the running configuration. They are lost at reload unless they are copied to the startup configuration (NVRAM).",
+        "summary_ar": "التغييرات تسري فورًا على الإعداد الجاري (running) وتضيع عند إعادة التشغيل ما لم تُنسخ إلى إعداد الإقلاع (startup / NVRAM).",
+        "enter": [
+          "configure terminal"
+        ],
+        "save": [
+          "copy running-config startup-config",
+          "write memory"
+        ],
+        "snapshot": [
+          "copy running-config flash:<backup>"
+        ],
+        "safe_change": [
+          "reload in 5",
+          "reload cancel"
+        ],
+        "rollback": [
+          "configure replace flash:<backup> force"
+        ],
+        "notes": "Classic IOS (the EVE-NG vIOS / vIOS-L2 lab images): `configure replace` needs the archive feature on some releases; the simplest rollback is not saving and reloading."
+      },
+      "cli_style": "Modal CLI, same style as IOS XE: user EXEC, privileged EXEC, global config, interface config; unique prefixes accepted; `do show ...` inside configuration mode.",
+      "cli_style_ar": "واجهة متعددة الأوضاع بنفس أسلوب IOS XE؛ تُقبل الاختصارات الفريدة، و`do show ...` داخل وضع الإعداد."
     },
     {
       "id": "nx-os",
@@ -106,7 +156,28 @@
           "10.3(3)",
           "9.3(10)"
         ]
-      }
+      },
+      "config_model": {
+        "style": "running-startup",
+        "summary": "Changes take effect immediately in the running configuration. They are lost at reload unless they are copied to the startup configuration (NVRAM).",
+        "summary_ar": "التغييرات تسري فورًا على الإعداد الجاري (running) وتضيع عند إعادة التشغيل ما لم تُنسخ إلى إعداد الإقلاع (startup / NVRAM).",
+        "enter": [
+          "configure terminal"
+        ],
+        "save": [
+          "copy running-config startup-config"
+        ],
+        "snapshot": [
+          "checkpoint <name>"
+        ],
+        "safe_change": [],
+        "rollback": [
+          "rollback running-config checkpoint <name>"
+        ],
+        "notes": "NX-OS checkpoints give a real rollback point; many protocols must be enabled first with `feature <name>`."
+      },
+      "cli_style": "IOS-like modal CLI, but most protocols must be enabled first with `feature <name>`; interfaces are named `Ethernet1/1`; `show running-config | section <x>`.",
+      "cli_style_ar": "شبيهة بـIOS لكن يجب تفعيل معظم البروتوكولات أولًا بـ`feature <name>`؛ الواجهات باسم `Ethernet1/1`؛ و`show running-config | section <x>`."
     },
     {
       "id": "ios-xr",
@@ -131,7 +202,28 @@
         "version": [
           "7.5.2"
         ]
-      }
+      },
+      "config_model": {
+        "style": "candidate-commit",
+        "summary": "Changes are staged in a target configuration and become active (and persistent) only on commit.",
+        "summary_ar": "التغييرات تُجمَّع في إعداد مرشّح ولا تصير فعّالة ودائمة إلا عند `commit`.",
+        "enter": [
+          "configure terminal"
+        ],
+        "save": [
+          "commit"
+        ],
+        "snapshot": [],
+        "safe_change": [
+          "commit confirmed 5"
+        ],
+        "rollback": [
+          "rollback configuration last 1"
+        ],
+        "notes": "`show configuration` lists the uncommitted changes."
+      },
+      "cli_style": "Two-stage CLI: edit the target configuration, then `commit`; `show configuration` lists uncommitted changes; interfaces are named like `GigabitEthernet0/0/0/0`.",
+      "cli_style_ar": "أوامر على مرحلتين: عدّل الإعداد المرشّح ثم `commit`؛ `show configuration` يعرض التغييرات غير المُلتزَم بها؛ أسماء الواجهات مثل `GigabitEthernet0/0/0/0`."
     }
   ],
   "series": [
@@ -455,6 +547,13 @@
       "event": "native_vlan_mismatch",
       "severity": "warning",
       "example": "%CDP-4-NATIVE_VLAN_MISMATCH: Native VLAN mismatch discovered on GigabitEthernet0/1 (1), with SW2 GigabitEthernet0/2 (10)."
+    },
+    {
+      "id": "config-i",
+      "regex": "%SYS-5-CONFIG_I:\\s*Configured from\\s+(?P<source>\\S+)\\s+by\\s+(?P<user>\\S+)",
+      "event": "config_change",
+      "severity": "info",
+      "example": "%SYS-5-CONFIG_I: Configured from console by admin on vty0 (10.0.0.5)"
     }
   ],
   "advisories": {
