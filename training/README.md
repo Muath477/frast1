@@ -72,6 +72,8 @@ python training/catalog/refresh_catalog.py  # يحدّث الكتالوج من H
 
 **برومبتان جاهزان للوكلاء:** [`VSCODE_AGENT_PROMPT.md`](VSCODE_AGENT_PROMPT.md) للتدريب المحلي داخل VS Code، و[`COLAB_AGENT_PROMPT.md`](COLAB_AGENT_PROMPT.md) للتدريب على Colab بإشراف Claude in Chrome (يفتح Colab وDrive وGitHub، ويقرأ الأخيرين فقط). كلاهما يبدأ بفحص ثم ينتظر «go»، ويمنع أي دفع إلى GitHub أو اقتراب من مستودع الأصل.
 
+**برومبت خامس للتدريب الكامل:** [`COLAB_FULL_RUN_PROMPT.md`](COLAB_FULL_RUN_PROMPT.md) يجعل Claude in Chrome يشغّل التدريب الكامل على Colab وحده (`SMOKE = False` و`INCLUDE_EXTERNAL = True`) بترتيب الخلايا الصحيح، مع ما يتوقع أن تطبعه كل خلية، وقاعدة إيقاف إن تجاوز الوقت المتوقع 8 ساعات، وجدول أخطاء، ولا يصدّر النموذج ولا يضغط نافذة إذن Drive.
+
 **برومبت رابع للبحث عن بيانات:** [`DATASET_SCOUT_PROMPT.md`](DATASET_SCOUT_PROMPT.md) يجعل Claude in Chrome يبحث في Hugging Face وKaggle عن مجموعات بيانات لكل المصنّعين (لا Cisco وحدها)، ويقرأ الرخصة بدقة، ويعيد قائمة JSON فقط (لا ينزّل ولا يكتب في ملفاتك). ثم يضيف Claude Code المقبول منها إلى الكتالوج وإلى `external.py` بعد فحص الرخصة عبر واجهة Hugging Face.
 
 في Colab: الدفتر يستنسخ المستودع ويشغّل نفس السكربت ويقرأ `data/generated/` (المرحلة **B0**)، ويقيّم قبل/بعد التدريب بـ`kb_eval.py` (المراحل **C1/D1**).
