@@ -3,6 +3,12 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Fix: cell E1 on Colab (found when exporting the merged model)
+- Colab ships `torchao` 0.10.0, and the newest `peft` raises "Found an incompatible version of torchao ... only versions above 0.16.0 are supported" when the adapter is loaded. E1 now removes an old `torchao` first (the notebook does not use it; the 4-bit weights come from bitsandbytes). In a local environment it stops with the exact command to run instead of changing the user's packages.
+- E1 used `del trainer, tuned, model` first, so after a failed attempt it could not be rerun (NameError). It now frees the GPU tolerantly, so the cell can be rerun.
+- `torch_dtype` (deprecated) is replaced by `dtype` on transformers 4.56 or newer.
+- Verified: 2 new tests run E1 with stand-ins (old torchao removed, compatible torchao left alone, local run refuses to modify packages, rerun after a failure, `dtype` name by version); 266 backend tests pass. The real merge and save on a GPU is still verified only by the Colab run.
+
 ## Wiring audit in CI (`scripts/audit_wiring.py`)
 - Starts the real API on the multi-vendor example topology and checks: 16 agents in the roster and the flow, 43 vendors, the five lab vendors identified with their config model, `sysDescr` identification (FortiOS, Junos, EOS, AOS-CX on two models, ArubaOS-Switch), syslog normalization with the knowledge base's own example lines, the Cisco/Arista shared format (Cisco chosen and Arista listed in `alsoMatches` without a device, Arista when the line is sent for the Arista switch), unknown lines counted as unparsed, and the Copilot save-config answer in English and Arabic.
 - Also checks that the test count, agent count and vendor count stated in README and the prompts match the code, that relative markdown links resolve, that the notebook clones the fork and has the fixed C2, that the workflows and custom agents parse, and that the frontend types carry `vendorContext` and `configModel`.
