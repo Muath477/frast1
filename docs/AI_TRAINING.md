@@ -56,7 +56,7 @@ MyDrive/RootIQ_AI/
   data/         train.jsonl · val.jsonl · eval_grounded.jsonl · kb_test_seen.jsonl · kb_test_unseen.jsonl · healthy_recording.jsonl (اختياري: تسجيل المختبر الحقيقي)
   cache/        teacher.jsonl (كل جواب من Groq يُحفظ: إعادة التشغيل لا تكرر الاستدعاءات)
   checkpoints/  نقاط الاستئناف (انقطاع Colab لا يضيّع شيئًا)
-  models/       iforest.joblib · rootiq-network-v1-lora/ · merged/rootiq-network-v1/
+  models/       iforest.joblib · rootiq-network-v1-lora/ · merged/rootiq-network-v1/   (تجربة SMOKE تكتب بلاحقة -smoke كي لا تختلط نقاط استئنافها بالتدريب الكامل)
   reports/      anomaly_report.json · eval_before.json · eval_report.json (الدقة)
 ```
 

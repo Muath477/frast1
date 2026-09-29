@@ -104,7 +104,8 @@ Run in this order and check the expected output before moving on:
   E1                 DO NOT RUN in the smoke phase (it writes ~8 GB to Drive).
 After D1: refresh the DRIVE tab and check, read-only, that these exist with non-zero sizes: data/train.jsonl, val.jsonl, eval_grounded.jsonl,
 kb_test_seen.jsonl, kb_test_unseen.jsonl, models/iforest.joblib, reports/anomaly_report.json, reports/eval_before.json, reports/eval_report.json,
-checkpoints/ and models/rootiq-network-v1-lora/. Open reports/eval_report.json in Drive's preview and confirm that its "decision" and the numbers
+checkpoints/rootiq-network-v1-smoke/ and models/rootiq-network-v1-smoke-lora/ (the SMOKE run uses the suffix -smoke; the full run uses
+rootiq-network-v1 without it, so the two never share checkpoints). Open reports/eval_report.json in Drive's preview and confirm that its "decision" and the numbers
 match what cell D1 printed; report any mismatch.
 Then send me the PHASE 1 REPORT (format below) and STOP. Wait for my decision to start the full run.
 
