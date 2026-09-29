@@ -4,6 +4,8 @@
 
 ![RootIQ demo](docs/deck/rootiq-demo.gif)
 
+[![CI](https://github.com/Muath477/frast1/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Muath477/frast1/actions/workflows/ci.yml)
+
 Venture X Hackathon — Infrastructure & Cloud · Mode: **sim-first** (live EVE-NG additive)
 
 ---
@@ -202,6 +204,16 @@ Shift+1 uplink · Shift+2 DNS · Shift+3 server spike · Shift+R reset · Shift+
 |---|---|
 | FE / keyboard demo | Ahmed |
 | BE / AI / INFRA / Presenter | Team (see kickoff) |
+
+## GitHub automation
+
+| What | Where | Does |
+|---|---|---|
+| CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | On every push to `main` / `my-edits` and every pull request: backend tests, frontend type-check + tests + build, and checks that the knowledge base, the generated training data and `docs/VENDORS.md` are in sync |
+| Copilot agent environment | [`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) | Installs Python and Node dependencies so the Copilot coding agent (the **Agents** tab) can run the tests |
+| Copilot instructions | [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | Repository rules for any Copilot agent: human approval only, read-only vendor commands, no invented vendor facts, no secrets, pull requests to this fork only |
+| Custom agents | [`.github/agents/`](.github/agents) | `vendor-kb` (maintains the vendor knowledge base) and `docs-keeper` (keeps README, CHANGELOG and docs consistent) |
+| Pull request template | [`.github/pull_request_template.md`](.github/pull_request_template.md) | Checklist: tests, regenerated data, no secrets, docs |
 
 ## Tests & training data
 
