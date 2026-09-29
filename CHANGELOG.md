@@ -3,6 +3,12 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Wiring audit in CI (`scripts/audit_wiring.py`)
+- Starts the real API on the multi-vendor example topology and checks: 16 agents in the roster and the flow, 43 vendors, the five lab vendors identified with their config model, `sysDescr` identification (FortiOS, Junos, EOS, AOS-CX on two models, ArubaOS-Switch), syslog normalization with the knowledge base's own example lines, the Cisco/Arista shared format (Cisco chosen and Arista listed in `alsoMatches` without a device, Arista when the line is sent for the Arista switch), unknown lines counted as unparsed, and the Copilot save-config answer in English and Arabic.
+- Also checks that the test count, agent count and vendor count stated in README and the prompts match the code, that relative markdown links resolve, that the notebook clones the fork and has the fixed C2, that the workflows and custom agents parse, and that the frontend types carry `vendorContext` and `configModel`.
+- Added as a step of the `consistency` CI job. Vendor data reaches the UI through the incident plan (`vendorContext`, `plan.vendorCommands`), not through `/api/vendors`, which is for API users.
+- Verified locally: 36 checks pass; frontend `tsc`, `vitest` (3 tests) and the production build pass.
+
 ## Fix: cell C2 on the newest TRL / transformers (found in the first real Colab run)
 - Colab installs the newest `transformers` / `trl`, which no longer accept `warmup_ratio`. C2 now passes `warmup_steps` (3% of the planned steps, as a whole number that old and new versions accept).
 - The blind `max_length` / `max_seq_length` retry hid that error behind a second one. C2 now looks at the fields of the installed `SFTConfig` and picks `max_length` vs `max_seq_length` and `eval_strategy` vs `evaluation_strategy`, picks `processing_class` vs `tokenizer` for `SFTTrainer` from its signature, and stops with a message that names any argument the installed version does not know.
