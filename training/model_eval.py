@@ -1,0 +1,226 @@
+"""Accuracy of every training run in one place, plus a way to measure any saved model.
+
+Used by the notebook cells D1 (writes one history row per measurement), F1 (prints the accuracy of ALL runs from Drive) and
+F2 (measures a saved model, e.g. the merged model E1 exported, with the same tests as D1). Pure Python: no GPU, no network,
+no keys, except `load_ccna` (Hugging Face `datasets`) and the model callables that F2 passes in.
+
+    reports/history.jsonl    one JSON line per measurement (appended by D1 and F2; never rewritten)
+    reports/eval_report.json the newest D1 report (also read here, so runs made before this file existed still show up)
+    reports/anomaly_report.json  stage A (Isolation Forest)
+"""
+from __future__ import annotations
+
+import json
+import random
+import re
+from pathlib import Path
+
+HISTORY = "history.jsonl"
+MCQ_SYSTEM = "You are a CCNA exam expert. Reply with ONLY the letter(s) of the correct answer(s), for example B or DF."
+AR_CHARS = re.compile(r"[؀-ۿ]")
+REFUSAL = re.compile(r"(?i)(as an ai|i cannot|i can't help|لا أستطيع|لا يمكنني)")
+
+
+# ---------------------------------------------------------------- the tests (same rules as notebook cells C0 / D1)
+def parse_letters(text: str | None) -> str:
+    """'B', 'DF', 'Answer: D', 'A and D' -> sorted unique letters A-G (first line only)."""
+    line = (text or "").strip().splitlines()[0] if (text or "").strip() else ""
+    tokens = re.findall(r"\b[A-G]{1,6}\b", line.upper())
+    multi = [t for t in tokens if len(t) > 1]
+    return "".join(sorted(set(multi[0] if multi else "".join(tokens))))
+
+
+def load_ccna(limit: int | None = None) -> list[dict]:
+    """The held-out CCNA questions, in the same order and cut as the notebook (needs the `datasets` package and internet)."""
+    from datasets import load_dataset
+
+    items = []
+    for split in ("volume1", "volume2"):
+        for r in load_dataset("Elfsong/Cisco_CCNA", split=split):
+            items.append({"q": r["Question"], "choices": r["Choices"], "answer": "".join(sorted(re.findall(r"[A-G]", r["Answer"].upper())))})
+    random.Random(3).shuffle(items)
+    return items[:limit] if limit else items
+
+
+def mcq_accuracy(answer_fn, items: list[dict]) -> dict:
+    ok = single_ok = single_n = 0
+    for it in items:
+        pred = parse_letters(answer_fn([{"role": "system", "content": MCQ_SYSTEM}, {"role": "user", "content": f"{it['q']}\n{it['choices']}"}]))
+        hit = pred == it["answer"]
+        ok += hit
+        if len(it["answer"]) == 1:
+            single_n += 1
+            single_ok += hit
+    return {"n": len(items), "accuracy": round(ok / len(items), 4), "single_answer_accuracy": round(single_ok / max(single_n, 1), 4)}
+
+
+def grounding_eval(answer_fn, rows: list[dict]) -> dict:
+    from app.intelligence.explain import grounded   # the product's own anti-hallucination check (backend must be on sys.path)
+
+    ok = pct = lang_ok = refusals = 0
+    for r in rows:
+        text = answer_fn(r["messages"][:2]) or ""
+        ok += bool(grounded(text, r["facts"]))
+        pcts = re.findall(r"\d+%", r["messages"][2]["content"])
+        pct += (not pcts) or any(p in text for p in pcts)
+        is_ar = len(AR_CHARS.findall(text)) / max(len(text), 1) > 0.2
+        lang_ok += (is_ar == (r["lang"] == "ar"))
+        refusals += bool(REFUSAL.search(text))
+    n = len(rows)
+    return {"n": n, "grounded_rate": round(ok / n, 4), "keeps_headline_percent": round(pct / n, 4), "correct_language": round(lang_ok / n, 4), "refusals": refusals}
+
+
+def cap_per_task(rows: list[dict], n: int, seed: int = 5) -> list[dict]:
+    """Stratified cap: at most n rows per task (the same rule as cell B0's per_task)."""
+    rnd, by = random.Random(seed), {}
+    for x in rows:
+        by.setdefault(x["task"], []).append(x)
+    out = []
+    for t in sorted(by):
+        items = by[t][:]
+        rnd.shuffle(items)
+        out += items[:n]
+    return out
+
+
+def _read_rows(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def evaluate_model(gen, gen_batch, *, root, smoke: bool, kb_eval, label: str, kind: str, base: str | None = None, ccna_items: list[dict] | None = None) -> dict:
+    """Measure one model with the same tests as D1 and return a history entry.
+
+    gen(messages, max_new_tokens) -> str          one greedy answer
+    gen_batch(list_of_messages, max_new_tokens) -> list[str]     greedy answers for many prompts
+    root: the RootIQ_AI folder (data/eval_grounded.jsonl, data/kb_test_seen.jsonl, data/kb_test_unseen.jsonl written by cell B5)
+    """
+    root = Path(root)
+    ccna = ccna_items if ccna_items is not None else load_ccna(40 if smoke else None)
+    held = _read_rows(root / "data" / "eval_grounded.jsonl")
+    seen = cap_per_task(_read_rows(root / "data" / "kb_test_seen.jsonl"), 4 if smoke else 12, seed=21)
+    unseen = cap_per_task(_read_rows(root / "data" / "kb_test_unseen.jsonl"), 4 if smoke else 12, seed=22)
+    kb = {name: kb_eval.evaluate_answers(rows, gen_batch([r["messages"][:2] for r in rows], 256)) for name, rows in (("seen", seen), ("unseen", unseen))}
+    measured = {
+        "ccna": mcq_accuracy(lambda m: gen(m, 8), ccna),
+        "grounding": grounding_eval(lambda m: gen(m, 160), held),
+        "kb": kb,
+    }
+    return entry_from(measured, kb_eval=kb_eval, run=label, kind=kind, base=base, smoke=smoke, decision=None)
+
+
+# ---------------------------------------------------------------- history
+def entry_from(measured: dict, *, kb_eval, run: str, kind: str, base: str | None, smoke: bool, decision: str | None, when: str | None = None) -> dict:
+    from datetime import datetime, timezone
+
+    return {
+        "when": when or datetime.now(timezone.utc).isoformat(timespec="seconds"), "run": run, "kind": kind, "base": base, "smoke": bool(smoke),
+        "ccna": measured["ccna"]["accuracy"], "ccna_n": measured["ccna"]["n"], "ccna_single": measured["ccna"].get("single_answer_accuracy"),
+        "grounded": measured["grounding"].get("grounded_rate"), "keeps_percent": measured["grounding"].get("keeps_headline_percent"),
+        "correct_language": measured["grounding"].get("correct_language"),
+        "kb_seen": kb_eval.headline(measured["kb"]["seen"]), "kb_unseen": kb_eval.headline(measured["kb"]["unseen"]),
+        "decision": decision,
+    }
+
+
+def entries_from_report(report: dict, kb_eval=None) -> list[dict]:
+    """A D1 report holds two measurements: the base model before training and the tuned model after it."""
+    if kb_eval is None:
+        import kb_eval  # noqa: PLW0621  (training/kb_eval.py, same folder)
+    run = report["model_name"] + ("-smoke" if report.get("smoke") else "")
+    common = dict(kb_eval=kb_eval, run=run, base=report.get("base"), smoke=report.get("smoke", False), when=report.get("measured_at"))
+    out = [entry_from(report["before"], kind="base", decision=None, **common), entry_from(report["after"], kind="tuned", decision=report.get("decision"), **common)]
+    teacher = report.get("groq_teacher_ccna")        # the Groq teacher on (a part of) the same CCNA questions: the reference ceiling
+    if teacher:
+        out.append({"when": report.get("measured_at"), "run": run, "kind": "teacher", "base": None, "smoke": bool(report.get("smoke")),
+                    "ccna": teacher["accuracy"], "ccna_n": teacher["n"], "ccna_single": teacher.get("single_answer_accuracy"),
+                    "grounded": None, "keeps_percent": None, "correct_language": None, "kb_seen": {}, "kb_unseen": {}, "decision": None})
+    return out
+
+
+def _key(e: dict) -> tuple:
+    return (e.get("when"), e.get("run"), e.get("kind"))
+
+
+def record(reports_dir, entries: list[dict]) -> int:
+    """Append entries to reports/history.jsonl, skipping any already there. Returns how many were added."""
+    reports_dir = Path(reports_dir)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    have = {_key(e) for e in load_history(reports_dir, include_latest=False)}
+    new = [e for e in entries if _key(e) not in have]
+    if new:
+        with (reports_dir / HISTORY).open("a", encoding="utf-8") as f:
+            for e in new:
+                f.write(json.dumps(e, ensure_ascii=False) + "\n")
+    return len(new)
+
+
+def load_history(reports_dir, include_latest: bool = True) -> list[dict]:
+    reports_dir = Path(reports_dir)
+    entries = _read_rows(reports_dir / HISTORY) if (reports_dir / HISTORY).exists() else []
+    latest = reports_dir / "eval_report.json"
+    if include_latest and latest.exists():          # runs made before history.jsonl existed still show up
+        have = {_key(e) for e in entries}
+        entries += [e for e in entries_from_report(json.loads(latest.read_text(encoding="utf-8"))) if _key(e) not in have]
+    order = {"base": 0, "tuned": 1, "merged": 2, "teacher": 3}     # within one run: untrained, trained, exported, then the Groq reference
+    return sorted(entries, key=lambda e: (e.get("when") or "", e.get("run") or "", order.get(e.get("kind"), 9)))
+
+
+# ---------------------------------------------------------------- the report you read
+def _f(x) -> str:
+    if x is None:
+        return "-"
+    return f"{x:.2f}" if isinstance(x, float) else str(x)
+
+
+COLUMNS = (("run", 24), ("when (UTC)", 16), ("model", 7), ("CCNA", 12), ("ground", 6), ("ident", 5), ("syslog", 6), ("cmd", 5), ("diag", 5),
+           ("config", 6), ("refuse", 6), ("invent", 6), ("unsafe", 6), ("decision", 12))
+
+
+def table(entries: list[dict]) -> str:
+    def row(e):
+        s, u = e.get("kb_seen") or {}, e.get("kb_unseen") or {}
+        return [e["run"], (e.get("when") or "")[:16].replace("T", " "), e["kind"], f"{_f(e.get('ccna'))} (n={e.get('ccna_n')})", _f(e.get("grounded")),
+                _f(s.get("identify_exact")), _f(s.get("syslog_exact")), _f(s.get("command_lookup")), _f(s.get("problem_diagnose")),
+                _f(s.get("config_model")), _f(s.get("refusal")), _f(u.get("invented_command_rate")),
+                "-" if not s else _f((s.get("unsafe_command_count") or 0) + (u.get("unsafe_command_count") or 0)),
+                e.get("decision") or "-"]
+
+    head = "  ".join(name.ljust(w) for name, w in COLUMNS)
+    lines = [head, "-" * len(head)]
+    last_run = None
+    for e in entries:
+        cells = row(e)
+        if e["run"] == last_run and e["kind"] != "base":       # same run: do not repeat its name and time
+            cells[0] = cells[1] = ""
+        last_run = e["run"]
+        lines.append("  ".join(str(c).ljust(w) for c, (_, w) in zip(cells, COLUMNS)))
+    return "\n".join(lines)
+
+
+def anomaly_text(reports_dir) -> str:
+    path = Path(reports_dir) / "anomaly_report.json"
+    if not path.exists():
+        return "Stage A (anomaly model): no report yet (run cells A1 and A2)."
+    meta = json.loads(path.read_text(encoding="utf-8"))
+    m = meta["metrics"]
+    lines = [f"Stage A, Isolation Forest ({meta.get('data_source', '?')}, trained {meta.get('trained_at', '?')[:16].replace('T', ' ')}): "
+             f"AUC {_f(m.get('auc'))}, false alarms {_f(m.get('fpr_iforest@0.6'))} (static thresholds {_f(m.get('fpr_static'))})"]
+    for sc, v in m.get("scenarios", {}).items():
+        lines.append(f"  {sc:18s} detects {_f(v.get('tpr_iforest@0.6'))} of fault windows (static thresholds {_f(v.get('tpr_static'))})")
+    return "\n".join(lines)
+
+
+def report_text(reports_dir) -> str:
+    entries = load_history(reports_dir)
+    if not entries:
+        return "No evaluation yet: run cells C1 to D1 (or F2) first."
+    smoke_only = all(e.get("smoke") for e in entries)
+    notes = [
+        "ground = answers whose numbers are all in the facts; ident/syslog/cmd/diag/config/refuse = vendor-knowledge accuracy on test_seen;",
+        "invent = commands not in the knowledge base (test_unseen, lower is better); unsafe = change commands that are not approved fixes (must be 0).",
+        "'base' rows are the untrained model, 'tuned' rows are after training, 'merged' rows are a saved model measured later (F2),",
+        "'teacher' rows are the Groq teacher on the same kind of CCNA questions (a reference ceiling; n is its own sample size).",
+    ]
+    if smoke_only:
+        notes.append("Every row so far is a SMOKE run (tiny data, 20 steps): it proves the pipeline works, not that the model is good.")
+    return "Vendor knowledge, CCNA and grounding, every run:\n\n" + table(entries) + "\n\n" + "\n".join(notes) + "\n\n" + anomaly_text(reports_dir)

@@ -442,7 +442,7 @@ def _run_e1(monkeypatch, tmp_path, *, torchao, transformers_version, in_colab=Tr
     (tmp_path / "reports").mkdir(exist_ok=True)
     (tmp_path / "reports" / "eval_report.json").write_text(json.dumps(report), encoding="utf-8")
     ns = {
-        "json": json, "IN_COLAB": in_colab, "sys": sys, "subprocess": SimpleNamespace(run=lambda cmd, **k: calls.append(cmd)),
+        "json": json, "IN_COLAB": in_colab, "sys": sys, "os": __import__("os"), "subprocess": SimpleNamespace(run=lambda cmd, **k: calls.append(cmd)),
         "ROOT": tmp_path, "save_json": lambda p, o: None, "now": lambda: "now", "kb_eval": kb_eval,
     }
     if report_in_memory:

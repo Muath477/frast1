@@ -3,12 +3,20 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Stage F: the accuracy of every run in one table, and a test for any saved model
+- New `training/model_eval.py` (CPU, no key). Cell D1 now appends its measurements to `reports/history.jsonl` on Drive (untrained model, trained model, Groq teacher), so a new training run no longer overwrites the numbers of the previous one.
+- New notebook cell **F1**: prints one table with a row per run (CCNA, grounding, identify / syslog / command / diagnose / config / refusal accuracy, invented and unsafe commands, decision) and the anomaly model of stage A. It also picks up a run that was made before the history file existed, from `reports/eval_report.json`. No GPU and no key; works after a runtime restart (run cells 1 and 3 first).
+- New notebook cell **F2**: `test_saved_model(path=None, kind="merged")` measures a saved model (default: the newest one exported by E1; also a Drive folder or a Hugging Face id) with the same tests as D1 and adds its row, so the exported bf16 model can be compared with the 4-bit model that was evaluated in D1.
+- The notebook has 27 cells now; the Colab operator prompt, the audit and the docs say so.
+- Verified: 8 new tests (parsing and scoring identical to the notebook's C0 helpers, the same per-task sampling as B0, report to history rows, the table for several runs including an older report and a smoke-only warning, a model measured from the files on Drive with a perfect and a clueless stand-in, F1 executed); 275 backend tests pass. F2's GPU part (loading the model) is verified only by the Colab run.
+
 ## Fix: cell E1 on Colab (found when exporting the merged model)
 - Colab ships `torchao` 0.10.0, and the newest `peft` raises "Found an incompatible version of torchao ... only versions above 0.16.0 are supported" when the adapter is loaded. E1 now removes an old `torchao` first (the notebook does not use it; the 4-bit weights come from bitsandbytes). In a local environment it stops with the exact command to run instead of changing the user's packages.
 - The second Colab error after that ("We need an `offload_dir` to dispatch this model ... layers.26 ... need to be offloaded"): `device_map="auto"` saw almost no free GPU memory, because a finished training run still holds most of it, and tried to push layers to disk. E1 now merges on the CPU (`device_map={"": "cpu"}`, bf16, about 8 GB of RAM), which needs no GPU memory and gives the same merged weights.
 - E1 used `del trainer, tuned, model` first, so after a failed attempt it could not be rerun (NameError). It now releases them tolerantly (also the traceback of a failed attempt, which keeps a half-loaded model alive), so the cell can be rerun.
 - E1 takes the base model, run name, smoke flag and decision from the evaluation report (`reports/eval_report.json`), and loads the tokenizer from the adapter folder, so it also works after a runtime restart (run cells 1 and 3 first).
 - `torch_dtype` (deprecated) is replaced by `dtype` on transformers 4.56 or newer.
+- E1 ends with `os.sync()` and says that Colab uploads the ~8 GB file to Drive in the background (it appeared in Drive about 15 minutes after the cell ended, `model.safetensors` = 8,044,982,080 bytes for the smoke run), how long to keep the runtime connected, and how to force the upload (`drive.flush_and_unmount()`, then run cell 1 to mount Drive again; E1 cannot be rerun while Drive is unmounted).
 - Verified: 3 new tests run E1 with stand-ins (old torchao removed, compatible torchao left alone, local run refuses to modify packages, merge on the CPU, rerun after a failure, restart with the report read from Drive, a DO NOT SHIP report refused, `dtype` name by version); 267 backend tests pass. The real merge and save on a GPU runtime is still verified only by the Colab run.
 
 ## Wiring audit in CI (`scripts/audit_wiring.py`)
