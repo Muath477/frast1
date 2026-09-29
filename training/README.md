@@ -74,6 +74,12 @@ python training/catalog/refresh_catalog.py  # يحدّث الكتالوج من H
 
 في Colab: الدفتر يستنسخ المستودع ويشغّل نفس السكربت ويقرأ `data/generated/` (المرحلة **B0**)، ويقيّم قبل/بعد التدريب بـ`kb_eval.py` (المراحل **C1/D1**).
 
+### الدقة في كل التدريبات (المرحلة F)
+- كل تشغيل للخلية **D1** يضيف صفوفه إلى `reports/history.jsonl` على Drive (النموذج غير المدرَّب `base`، والمدرَّب `tuned`، ومعلّم Groq `teacher`)، فلا يُمحى شيء عند تدريب جديد.
+- **F1** (بلا GPU ولا مفتاح، وتعمل بعد إعادة تشغيل Runtime إذا شغّلت الخليتين 1 و3): تطبع جدولًا واحدًا لكل التشغيلات: CCNA، ونسبة الإجابات المستندة إلى الحقائق (grounding)، ودقة معرفة المصنّعين (identify وsyslog وcommand وdiagnose وconfig وrefusal)، ومعدل الأوامر المخترَعة، وعدد الأوامر غير الآمنة، والقرار، ثم نتائج نموذج الشذوذ (المرحلة A).
+- **F2** (تحتاج GPU): الدالة `test_saved_model(path=None, kind="merged")` تقيس أي نموذج محفوظ (افتراضيًا أحدث نموذج صدّرته E1، أو مجلد، أو معرّف Hugging Face) بنفس اختبارات D1 وتضيف صفه إلى الجدول. مفيدة لقياس النموذج المدموج نفسه، إذ يُدمج الـadapter المدرَّب على 4-bit في نموذج bf16 فقد تختلف نتائجه قليلًا.
+- المنطق في [`model_eval.py`](model_eval.py) (يعمل على CPU ويُختبر في `backend/tests/test_model_eval.py`).
+
 ### إضافة مصنّع أو أمر أو نمط syslog
 1. عدّل/أضف ملفًا في `backend/app/knowledge/data/vendors/<id>.json` (أو `problems.json`).
 2. `python -c "from app.knowledge import get_kb; print(get_kb().validate())"` من `backend/` — يجب أن تكون القائمة فارغة (يفحص أن أوامر القراءة للقراءة فقط، وأن أمثلة الـregex تطابق، وأن أرقام PEN غير مكرّرة…).

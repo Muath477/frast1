@@ -51,7 +51,7 @@ Per-agent details: [`docs/AGENTS.md`](docs/AGENTS.md).
 | UI | Incident plan shows **Vendor diagnostics** and **Applying a change**; the Agents page lists all 16 agents | `frontend/src/components/incidents/VendorCommands.tsx` |
 | Training | `training/`: generated dataset (about 4.7k EN/AR examples, 10 tasks), offline evaluator, Hugging Face catalog, Colab notebook | [`training/README.md`](training/README.md) · [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) |
 | Mixed-vendor lab | Example topology: Cisco + Juniper vQFX + Arista vEOS + FortiGate-VM + Aruba AOS-CX | [`configs/topology.multivendor.example.json`](configs/topology.multivendor.example.json) |
-| Tests | 267 backend tests (151 before) | `cd backend && pytest -q` |
+| Tests | 275 backend tests (151 before) | `cd backend && pytest -q` |
 
 ### Honest limits
 
@@ -71,7 +71,7 @@ Per-agent details: [`docs/AGENTS.md`](docs/AGENTS.md).
 - **المساعد الذكي (Copilot):** يجيب عن الأوامر والمشاكل وحفظ الإعداد لعدة مصنّعين جنبًا إلى جنب، حرفيًا من القاعدة.
 - **الواجهة:** خطة الحادثة تعرض «Vendor diagnostics» و«Applying a change».
 - **التدريب:** مجلد `training/` فيه بيانات مولَّدة من القاعدة، ومقيّم آلي، وكتالوج Hugging Face، ودفتر Colab.
-- **الاختبارات:** 267 اختبارًا.
+- **الاختبارات:** 275 اختبارًا.
 
 **حدود صريحة:** القاعدة ليست شاملة (تغطية كاملة لخمسة مصنّعين فقط)، والأوامر لم تُلتقط من أجهزة حقيقية (Fortinet أضعفها ثقةً)، وRootIQ يعرض الأوامر للمهندس ولا ينفّذها.
 
@@ -220,7 +220,7 @@ Shift+1 uplink · Shift+2 DNS · Shift+3 server spike · Shift+R reset · Shift+
 ```powershell
 cd backend
 $env:ROOTIQ_MODE = 'sim'
-.\.venv\Scripts\python.exe -m pytest -q                        # 267 tests
+.\.venv\Scripts\python.exe -m pytest -q                        # 275 tests
 cd ..\frontend; npx tsc --noEmit; npx vitest run src           # type-check + unit tests
 cd ..; python training\build_dataset.py --check                # committed training data matches the knowledge base
 python scripts\audit_wiring.py                                 # runs the API on the multi-vendor topology; docs, counts, notebook and frontend agree with the code
