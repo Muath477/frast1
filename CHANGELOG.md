@@ -3,6 +3,11 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Notebook fixes found in review (before the first GPU run)
+- C2: the SMOKE run and the full run no longer share a checkpoint folder (the full run would have resumed from the 20-step smoke checkpoint with a finished learning-rate schedule); the adapter and the merged model carry the same `-smoke` suffix.
+- C2: `per_device_eval_batch_size=2` (the default of 8 with a 152k-token vocabulary can exhaust a T4) and `padding_side = "right"` for training (batched decoding in C1 sets it to left).
+- Not run on a GPU: these are fixes from code review, verified only by the notebook tests (cells compile, CPU cells run).
+
 ## GitHub automation (CI, Copilot agent setup, custom agents)
 - `.github/workflows/ci.yml`: backend pytest, frontend type-check + vitest + build, and a consistency job (knowledge base validates, generated training data and `docs/VENDORS.md` match the knowledge base).
 - `.github/workflows/copilot-setup-steps.yml`, `.github/copilot-instructions.md`, `.github/agents/{vendor-kb,docs-keeper}.agent.md`: environment, rules and two custom agents for the Copilot coding agent (the Agents tab).
