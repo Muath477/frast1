@@ -70,6 +70,7 @@
   "agents.llmOn": "LLM: {{provider}} · {{model}}",
   "agents.llmOff": "Deterministic mode (no LLM)",
   "agents.kb": "Knowledge base: {{n}} passages",
+  "agents.vendors": "Vendor KB: {{n}} vendors ({{full}} full)",
   "agents.dataQuality": "Data quality {{pct}}%",
   "agents.trace.incident": "Incident",
   "agents.trace.all": "All activity",

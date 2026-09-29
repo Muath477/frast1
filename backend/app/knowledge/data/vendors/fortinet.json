@@ -1,0 +1,140 @@
+{
+  "id": "fortinet",
+  "name": "Fortinet",
+  "aliases": [
+    "fortinet",
+    "fortiswitch",
+    "fortigate",
+    "fortios",
+    "فورتينت"
+  ],
+  "categories": [
+    "switching",
+    "security",
+    "wireless"
+  ],
+  "enterprise_oids": [
+    {
+      "pen": 12356,
+      "org": "Fortinet, Inc."
+    }
+  ],
+  "coverage": "partial",
+  "confidence": "low",
+  "os_families": [
+    {
+      "id": "fortiswitchos",
+      "name": "FortiSwitchOS",
+      "cli": "fortios",
+      "netmiko": "fortinet",
+      "aliases": [
+        "fortiswitchos",
+        "fortiswitch"
+      ],
+      "sysdescr_regex": [
+        "FortiSwitch-(?P<model>[0-9A-Za-z\\-]+)"
+      ],
+      "version_regex": "Version:\\s*FortiSwitch-\\S+\\s+v(?P<version>\\d+\\.\\d+\\.\\d+)",
+      "version_scheme": "MAJOR.MINOR.PATCH, e.g. 7.2.5 (managed standalone or by FortiGate FortiLink).",
+      "examples": {
+        "sysdescr": [
+          "FortiSwitch-124E-POE"
+        ],
+        "version": [
+          "7.2.5"
+        ]
+      }
+    },
+    {
+      "id": "fortios",
+      "name": "FortiOS (FortiGate firewalls)",
+      "cli": "fortios",
+      "netmiko": "fortinet",
+      "aliases": [
+        "fortios",
+        "fortigate"
+      ],
+      "sysdescr_regex": [],
+      "version_regex": null,
+      "version_scheme": "MAJOR.MINOR.PATCH, e.g. 7.4.3.",
+      "examples": {
+        "sysdescr": [],
+        "version": [
+          "7.4.3"
+        ]
+      }
+    }
+  ],
+  "series": [
+    {
+      "name": "FortiSwitch 100 / 200 / 400 / 500 series",
+      "role": "access / aggregation (PoE variants)",
+      "os": "fortiswitchos"
+    },
+    {
+      "name": "FortiSwitch 1000 / 2000 / 3000 series",
+      "role": "data-center / core",
+      "os": "fortiswitchos"
+    },
+    {
+      "name": "FortiGate",
+      "role": "firewall (FortiOS)",
+      "os": "fortios"
+    }
+  ],
+  "commands": {
+    "default": {
+      "show_version": {
+        "read": [
+          "get system status"
+        ]
+      },
+      "show_interface_status": {
+        "read": [
+          "diagnose switch physical-ports summary"
+        ]
+      },
+      "show_mac_table": {
+        "read": [
+          "diagnose switch mac-address list"
+        ]
+      },
+      "show_neighbors": {
+        "read": [
+          "get switch lldp neighbors-summary"
+        ]
+      },
+      "show_cpu": {
+        "read": [
+          "get system performance status"
+        ]
+      },
+      "show_lag": {
+        "read": [
+          "diagnose switch trunk summary"
+        ]
+      },
+      "show_logging": {
+        "read": [
+          "execute log display"
+        ]
+      }
+    }
+  },
+  "syslog": [],
+  "advisories": {
+    "eol": {
+      "url": null,
+      "status": "not embedded"
+    },
+    "security": {
+      "url": "https://www.fortiguard.com/psirt",
+      "status": "200"
+    }
+  },
+  "notes": "Usually managed through a FortiGate (FortiLink); the switch CLI is limited. Command list is partly unverified.",
+  "pen_verification": "verified against https://www.iana.org/assignments/enterprise-numbers.txt (2026-09-25)",
+  "default_for": [
+    "fortiswitchos"
+  ]
+}

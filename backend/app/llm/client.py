@@ -18,6 +18,7 @@ log = logging.getLogger("rootiq.llm")
 DEFAULT_MODELS = {
     "anthropic": "claude-haiku-4-5-20251001",
     "gemini": "gemini-2.5-flash",
+    "custom": "rootiq-network",  # your own fine-tuned model behind an OpenAI-compatible server
     "groq": "qwen/qwen3.8-27b",  # checked against GET /openai/v1/models on 2026-09-28; model ids change, re-check
 }
 PROVIDERS = tuple(DEFAULT_MODELS)
@@ -28,6 +29,7 @@ def _key(provider: str) -> str:
         "anthropic": settings.anthropic_api_key,
         "gemini": settings.gemini_api_key,
         "groq": settings.groq_api_key,
+        "custom": settings.custom_llm_api_key,
     }.get(provider, "")
 
 
@@ -37,11 +39,11 @@ def model_name(provider: str | None = None) -> str:
 
 
 def enabled() -> bool:
-    return bool(
-        settings.llm_enabled
-        and settings.llm_provider in PROVIDERS
-        and _key(settings.llm_provider)
-    )
+    if not settings.llm_enabled or settings.llm_provider not in PROVIDERS:
+        return False
+    if settings.llm_provider == "custom":  # local/private servers often need no key, but need an address
+        return bool(settings.llm_base_url)
+    return bool(_key(settings.llm_provider))
 
 
 # Usage counters (per process) so operators can watch cost and reliability.
@@ -137,7 +139,28 @@ async def _groq(system: str, user: str, max_tokens: int, timeout: float) -> str:
     return data["choices"][0]["message"]["content"]
 
 
-_IMPL = {"anthropic": _anthropic, "gemini": _gemini, "groq": _groq}
+async def _custom(system: str, user: str, max_tokens: int, timeout: float) -> str:
+    headers = {"content-type": "application/json"}
+    if settings.custom_llm_api_key:
+        headers["authorization"] = f"Bearer {settings.custom_llm_api_key}"
+    data = await _post(
+        settings.llm_base_url.rstrip("/") + "/chat/completions",
+        headers,
+        {
+            "model": model_name("custom"),
+            "max_tokens": max_tokens,
+            "temperature": 0.1,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        },
+        timeout,
+    )
+    return data["choices"][0]["message"]["content"]
+
+
+_IMPL = {"anthropic": _anthropic, "gemini": _gemini, "groq": _groq, "custom": _custom}
 
 
 async def complete(

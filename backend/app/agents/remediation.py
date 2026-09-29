@@ -17,6 +17,27 @@ def _bump(risk: str) -> str:
 class RemediationAgent(Agent):
     spec = SPECS["remediation"]
 
+    @staticmethod
+    def _vendor_commands(ctx: dict | None) -> dict | None:
+        """Reference commands (from the Vendor agent) for the top matched problem. Shown to the engineer, never executed."""
+        problems = (ctx or {}).get("problems") or []
+        if not problems:
+            return None
+        top = problems[0]
+        return {
+            "problem": top["id"],
+            "title": top["title"],
+            "titleAr": top["titleAr"],
+            "devices": [
+                {k: d[k] for k in ("id", "label", "role", "interface", "vendor", "vendorName", "os", "osName", "confidence")}
+                for d in ctx["devices"]
+            ],
+            "diagnose": top["diagnose"],
+            "fixes": top["fixes"],
+            "executable": False,
+            "note": "Reference commands for the engineer. RootIQ does not push them; only the whitelisted playbook runs after approval.",
+        }
+
     def build(self, inc) -> dict:
         """Pure function: incident -> action fields (no id / approval state)."""
         root = (inc.root_cause or {}).get("entityId") or next(iter(sorted(inc.members)), "unknown")
@@ -35,6 +56,7 @@ class RemediationAgent(Agent):
         if mode == "live":
             factors.append("Live lab mode: the change is applied to running (virtual) devices")
 
+        vendor_commands = self._vendor_commands(getattr(inc, "vendor_context", None))
         plan = {
             "playbookId": pb["id"],
             "title": pb["title"],
@@ -51,6 +73,8 @@ class RemediationAgent(Agent):
             "requiresApproval": True,
             "autoExecutable": False,
         }
+        if vendor_commands:
+            plan["vendorCommands"] = vendor_commands
         return {
             "actionType": pb["actionType"],
             "description": pb["description"],
@@ -69,6 +93,7 @@ class RemediationAgent(Agent):
                 "risk": fields["riskLevel"],
                 "steps": len(plan["steps"]),
                 "riskFactors": plan["riskFactors"],
+                "vendorCommands": bool(plan.get("vendorCommands")),
             }
             st.decision = plan["playbookId"]
             st.summary = (

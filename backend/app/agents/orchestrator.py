@@ -27,6 +27,7 @@ class Investigation:
     mv_evidence: dict | None = None
     explanation: dict | None = None
     knowledge: dict | None = None
+    vendor: dict | None = None
     facts: dict = field(default_factory=dict)
 
 
@@ -74,6 +75,7 @@ class Orchestrator(Agent):
                 default=template(kind, facts),  # deterministic fallback if the agent is off / slow / failing
             )
             knowledge = await self.safe("knowledge", "retrieve_context", inc.id, rt.knowledge.related(inc, root.entity_id))
+            vendor = await self.safe("vendor", "enrich_incident", inc.id, rt.vendor.enrich(inc, root.entity_id))
 
             ms = round((time.perf_counter() - t0) * 1000, 1)
             st.data = {"root": root.entity_id, "confidence": conf, "pipelineMs": ms}
@@ -91,6 +93,7 @@ class Orchestrator(Agent):
                 mv_evidence=mv,
                 explanation=explanation,
                 knowledge=knowledge,
+                vendor=vendor,
                 facts=facts,
             )
 

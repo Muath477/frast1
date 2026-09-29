@@ -37,6 +37,7 @@ class IncidentState:
         self.acknowledged_at: str | None = None
         self.verification: dict | None = None
         self.knowledge: dict | None = None
+        self.vendor_context: dict | None = None
         self._analyze_task: asyncio.Task | None = None
         self._analyzing = False  # True while analyze() is running (it may wait on LLM/RAG)
 
@@ -64,6 +65,7 @@ class IncidentState:
             "acknowledgedAt": self.acknowledged_at,
             "verification": self.verification,
             "knowledge": self.knowledge,
+            "vendorContext": self.vendor_context,
         }
 
 
@@ -236,6 +238,7 @@ class IncidentService:
         inc.explanation = result.explanation
         if result.knowledge:
             inc.knowledge = result.knowledge
+        inc.vendor_context = result.vendor  # set before the plan is built: the planner adds vendor commands from it
 
         # Attach pending action recommendation (planner + guardrail agents)
         if self.actions and not (inc.action and inc.action.get("approvalStatus") == "pending"):

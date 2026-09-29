@@ -19,3 +19,8 @@ test-results/
 
 *.db
 
+
+# training data
+training/data/external/*
+!training/data/external/README.md
+training/**/__pycache__/

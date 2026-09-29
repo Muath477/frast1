@@ -1,0 +1,136 @@
+{
+  "by_lang": {
+    "ar": 2119,
+    "en": 2118
+  },
+  "by_task": {
+    "command_lookup": {
+      "test_seen": 43,
+      "test_unseen": 38,
+      "train": 689,
+      "val": 34
+    },
+    "command_translate": {
+      "test_seen": 51,
+      "test_unseen": 54,
+      "train": 1143,
+      "val": 52
+    },
+    "identify": {
+      "test_seen": 21,
+      "test_unseen": 26,
+      "train": 409,
+      "val": 24
+    },
+    "incident_vendor_plan": {
+      "test_seen": 4,
+      "test_unseen": 36,
+      "train": 142,
+      "val": 10
+    },
+    "problem_diagnose": {
+      "test_seen": 40,
+      "test_unseen": 32,
+      "train": 639,
+      "val": 38
+    },
+    "safety_refusal": {
+      "test_seen": 2,
+      "test_unseen": 3,
+      "train": 30,
+      "val": 3
+    },
+    "syslog": {
+      "test_seen": 22,
+      "train": 463,
+      "val": 31
+    },
+    "vendor_profile": {
+      "test_seen": 3,
+      "test_unseen": 4,
+      "train": 77,
+      "val": 2
+    },
+    "version_parse": {
+      "test_seen": 4,
+      "test_unseen": 4,
+      "train": 62,
+      "val": 2
+    }
+  },
+  "files": {
+    "test_seen.jsonl": "f3a4ecf4e82233087df61898c2acb88b9cfd303c6ac7a437bdbc6efd932b2387",
+    "test_unseen.jsonl": "dda0b62c8ba859b9833f23a1e68d6ec857b79a6b0f73d025cac531a0549c959c",
+    "train.jsonl": "8ecc5088dbd3ca968412ea9bf250f21a1e357133373fccdf7496ac62ca334d0d",
+    "val.jsonl": "02a6ec57f15232e6317cd20debcdf2806bc2a0d9080c48c0f95f57798eb73e5b"
+  },
+  "generator_version": 1,
+  "kb_fingerprint": "55368a0fe87238f13c278865cdcf355d857900c659d6fa1a189789cddd51ae89",
+  "kb_stats": {
+    "capabilities": 26,
+    "commandEntries": 228,
+    "coverage": {
+      "full": 5,
+      "partial": 7,
+      "profile-only": 31
+    },
+    "osFamilies": 59,
+    "problems": 25,
+    "seriesFamilies": 103,
+    "syslogPatterns": 21,
+    "vendors": 43
+  },
+  "seed": 20260929,
+  "splits": {
+    "test_seen": 190,
+    "test_unseen": 197,
+    "train": 3654,
+    "val": 196
+  },
+  "total": 4237,
+  "vendors_covered": [
+    "adtran",
+    "alcatel-lucent-enterprise",
+    "allied-telesis",
+    "arista",
+    "brocade",
+    "calix",
+    "cambium",
+    "checkpoint",
+    "ciena",
+    "cisco",
+    "d-link",
+    "dell",
+    "edgecore",
+    "ericsson",
+    "extreme",
+    "f5",
+    "fortinet",
+    "fs",
+    "h3c",
+    "hirschmann",
+    "hpe-aruba",
+    "huawei",
+    "juniper",
+    "lenovo",
+    "linux",
+    "mikrotik",
+    "moxa",
+    "netgear",
+    "nokia",
+    "nvidia",
+    "paloalto",
+    "peplink",
+    "planet",
+    "ruckus",
+    "ruijie",
+    "siemens",
+    "sonic",
+    "supermicro",
+    "teltonika",
+    "tp-link",
+    "ubiquiti",
+    "zte",
+    "zyxel"
+  ]
+}

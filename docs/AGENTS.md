@@ -1,8 +1,8 @@
 # وكلاء RootIQ (Multi-Agent) — الدليل الكامل
 
-> **الفكرة في سطر:** بدل «نموذج ذكاء اصطناعي واحد يفعل كل شيء»، RootIQ فيها **14 وكيلًا متخصصًا**، لكل وكيل مهمة واحدة وأدوات محدودة وأثر (trace) يمكن تدقيقه — وقرار التنفيذ **دائمًا** بيد المهندس.
+> **الفكرة في سطر:** بدل «نموذج ذكاء اصطناعي واحد يفعل كل شيء»، RootIQ فيها **16 وكيلًا متخصصًا**، لكل وكيل مهمة واحدة وأدوات محدودة وأثر (trace) يمكن تدقيقه — وقرار التنفيذ **دائمًا** بيد المهندس.
 >
-> الكود: `backend/app/agents/` · الواجهة: صفحة **Agents** (أيقونة الروبوت) · الاختبارات: `backend/tests/test_agent*.py` `test_guardrail.py` `test_copilot.py` `test_rag.py`
+> الكود: `backend/app/agents/` · الواجهة: صفحة **Agents** (أيقونة الروبوت) · الاختبارات: `backend/tests/test_agent*.py` `test_guardrail.py` `test_copilot.py` `test_rag.py` `test_knowledge_base.py` `test_vendor_agents.py`
 
 ---
 
@@ -13,19 +13,21 @@
 | 1 | `orchestrator` المنسّق | إشراف | ينسّق | لا يوقف فشلُ وكيلٍ واحد الحادثةَ كلها، والمسار كله قابل للتتبع | لا |
 | 2 | `telemetry` القياسات | رصد | يراقب | يمسك البيانات السيئة/القديمة قبل أن تصير حادثة كاذبة | لا |
 | 3 | `detection` الكشف | رصد | يراقب | يكتشف العطل خلال ثانية بدون بيانات تدريب | لا |
-| 4 | `topology` الطوبولوجيا | استدلال | يراقب | يجيب «ماذا ينكسر لو بطؤ هذا الرابط؟» من الرسم لا من التخمين | لا |
-| 5 | `correlation` الربط | استدلال | يراقب | عشرات التنبيهات → حادثة واحدة (~96% تقليل ضجيج) | لا |
-| 6 | `rca` السبب الجذري | استدلال | ينصح | أفضل 3 أسباب بأدلة ونسبة ثقة، ويقول «لا أعرف» عند الشك | لا |
-| 7 | `explanation` الشرح | استدلال | ينصح | شرح عربي/إنجليزي بلا أي رقم مختلق | اختياري |
-| 8 | `knowledge` المعرفة (RAG) | معرفة | يراقب | يسترجع حوادث سابقة وخطوة الـrunbook المناسبة مع المصدر | لا |
-| 9 | `copilot` المساعد | معرفة | ينصح | اسأل بدل التنقل بين اللوحات، وكل ادعاء له مصدر | اختياري |
-| 10 | `remediation` مخطِّط المعالجة | إجراء | ينصح | المهندس يوافق على خطة محددة قابلة للتراجع، لا على اقتراح غامض | لا |
-| 11 | `guardrail` الحماية | حوكمة | ينسّق | «لا شيء يُنفَّذ بدون مهندس» قاعدة في الكود لا عُرف | لا |
-| 12 | `execution` التنفيذ | إجراء | ينفّذ بموافقة فقط | المكوّن الوحيد الذي يلمس المختبر، ويرفض بدون حكم Guardrail | لا |
-| 13 | `verification` التحقق | إجراء | يراقب | التعافي يُثبَت بالأرقام لا يُفترض | لا |
-| 14 | `learning` التعلّم وما بعد الحادثة | تعلّم | ينصح | كل حادثة تجعل التالية أسرع، وتقرير جاهز للفريق | لا |
+| 4 | `logs` السجلات (Syslog) **جديد** | رصد | يراقب | يلتقط سقوط منفذ من سجل الجهاز نفسه، بصيغ Cisco/Juniper/Arista/Huawei/MikroTik… | لا |
+| 5 | `topology` الطوبولوجيا | استدلال | يراقب | يجيب «ماذا ينكسر لو بطؤ هذا الرابط؟» من الرسم لا من التخمين | لا |
+| 6 | `vendor` معرفة المصنّعين **جديد** | معرفة | ينصح | يعرف مصنّع كل جهاز ونظامه وإصداره ويعطي أوامر الفحص بلغته (قراءة فقط) | لا |
+| 7 | `correlation` الربط | استدلال | يراقب | عشرات التنبيهات → حادثة واحدة (~96% تقليل ضجيج) | لا |
+| 8 | `rca` السبب الجذري | استدلال | ينصح | أفضل 3 أسباب بأدلة ونسبة ثقة، ويقول «لا أعرف» عند الشك | لا |
+| 9 | `explanation` الشرح | استدلال | ينصح | شرح عربي/إنجليزي بلا أي رقم مختلق | اختياري |
+| 10 | `knowledge` المعرفة (RAG) | معرفة | يراقب | يسترجع حوادث سابقة وخطوة الـrunbook وكتالوج المصنّعين والمشاكل مع المصدر | لا |
+| 11 | `copilot` المساعد | معرفة | ينصح | اسأل بدل التنقل بين اللوحات (وعن أوامر أي مصنّع)، وكل ادعاء له مصدر | اختياري |
+| 12 | `remediation` مخطِّط المعالجة | إجراء | ينصح | المهندس يوافق على خطة محددة قابلة للتراجع (مع أوامر مصنّع الجهاز المرجعية) | لا |
+| 13 | `guardrail` الحماية | حوكمة | ينسّق | «لا شيء يُنفَّذ بدون مهندس» قاعدة في الكود، وأوامر التشخيص للقراءة فقط | لا |
+| 14 | `execution` التنفيذ | إجراء | ينفّذ بموافقة فقط | المكوّن الوحيد الذي يلمس المختبر، ويرفض بدون حكم Guardrail | لا |
+| 15 | `verification` التحقق | إجراء | يراقب | التعافي يُثبَت بالأرقام لا يُفترض | لا |
+| 16 | `learning` التعلّم وما بعد الحادثة | تعلّم | ينصح | كل حادثة تجعل التالية أسرع، وتقرير جاهز للفريق | لا |
 
-**12 من 14 وكيلًا حتمية (Deterministic) بالكامل.** الـLLM يدخل فقط في `explanation` و`copilot`، وبشرطين: (1) مفتاح API مفعّل، (2) كل رقم في الجواب موجود في الحقائق المقاسة — وإلا يُرفض الجواب ويُستخدم القالب.
+**14 من 16 وكيلًا حتمية (Deterministic) بالكامل.** الـLLM يدخل فقط في `explanation` و`copilot`، وبشرطين: (1) مفتاح API مفعّل، (2) كل رقم في الجواب موجود في الحقائق المقاسة — وإلا يُرفض الجواب ويُستخدم القالب.
 
 ---
 
@@ -61,6 +63,7 @@
 flowchart LR
   subgraph Perceive[الرصد]
     TEL[telemetry] --> DET[detection]
+    LOG[logs: syslog] --> DET
   end
   subgraph Correlate[الربط]
     TOP[topology] --> COR[correlation]
@@ -68,6 +71,7 @@ flowchart LR
   subgraph Diagnose[التشخيص]
     RCA[rca] --> EXP[explanation]
     RCA --> KNO[knowledge]
+    RCA --> VEN[vendor]
   end
   subgraph Plan[التخطيط والفحص]
     REM[remediation] --> GR1[guardrail: recommend]
@@ -82,6 +86,8 @@ flowchart LR
   DET --> COR --> RCA
   TOP --> RCA
   RCA --> REM
+  VEN --> REM
+  VEN --> KNO
   GR1 --> HUMAN --> GR2
   EXE --> VER
   LRN -->|postmortem| KNO
@@ -101,9 +107,10 @@ flowchart LR
 | | `detection.multivariate_score` | skipped — لا يوجد نموذج Isolation Forest مدرّب (اختياري) |
 | | `explanation.write_explanation` | شرح قالبي EN+AR |
 | | `knowledge.retrieve_context` | 0 حادثة مشابهة، 3 مراجع |
+| | `vendor.enrich_incident` | 2/2 جهاز مُعرَّف (R1 و SW1: Cisco IOS)، نمطان معروفان — الأول: Link congestion |
 | | `orchestrator.investigate` | اكتمل التشخيص |
-| | `remediation.plan_remediation` | `PB-LINK-QOS` مخاطرة low، 3 خطوات، تراجع معرّف |
-| | `guardrail.policy_recommend` | 3 فحوص سياسة نجحت |
+| | `remediation.plan_remediation` | `PB-LINK-QOS` مخاطرة low، 3 خطوات، تراجع معرّف، وأوامر فحص Cisco المرجعية لـGi0/0 و Gi0/1 |
+| | `guardrail.policy_recommend` | فحوص السياسة نجحت (منها `vendor_commands_read_only`) |
 | | `orchestrator.handoff_to_human` | **بانتظار المهندس — لا شيء سيعمل قبله** |
 | بعد الموافقة | `guardrail.policy_approve` ← `execution.execute_playbook` | تنفيذ عبر المحاكي/وكيل المختبر المحصور |
 | بعد التعافي | `verification.verify_recovery` ← `learning.close_out` ← `orchestrator.incident_closed` | تحقق 3/3 + تقرير + تحديث التاريخ |
@@ -119,7 +126,7 @@ flowchart LR
 |---|---|
 | `agents/roster.py` | مصدر الحقيقة لوصف كل وكيل (bilingual) + مخطط الخط `FLOW/EDGES` |
 | `agents/base.py` | `AgentSpec` · `TraceStep` · `TraceStore` · `Agent.step()` (يقيس الزمن، يسجل الأثر، يبثّه عبر WebSocket) |
-| `agents/runtime.py` | `AgentRuntime`: ينشئ الوكلاء الـ14، يملك الـTraceStore ومفاتيح التعطيل، ويوفّر `roster()/flow()/health()` |
+| `agents/runtime.py` | `AgentRuntime`: ينشئ الوكلاء الـ16، يملك الـTraceStore ومفاتيح التعطيل، ويوفّر `roster()/flow()/health()` |
 | `agents/orchestrator.py` | يشغّل التشخيص، `safe()` = مهلة + بديل، `handoff()` و`closed()` |
 | `agents/playbooks.py` | كتالوج الـplaybooks المسموحة (القائمة البيضاء الوحيدة) |
 
@@ -136,7 +143,7 @@ flowchart LR
 
 ### 3.3 مفاتيح التعطيل (Kill switches)
 - `POST /api/agents/{id}/toggle` `{ "enabled": false, "actor": "Ahmed" }` — يُسجَّل في Audit.
-- **قابلة للتعطيل:** `telemetry` `explanation` `knowledge` `copilot` `verification` `learning`.
+- **قابلة للتعطيل:** `telemetry` `logs` `vendor` `explanation` `knowledge` `copilot` `verification` `learning`.
 - **غير قابلة للتعطيل (403):** `orchestrator` `detection` `topology` `correlation` `rca` `remediation` `guardrail` `execution` — لأن تعطيلها إما يكسر التشخيص أو يُضعف الأمان.
 
 ### 3.4 جدول التدهور الآمن (ماذا يحدث عند الفشل/التعطيل)
@@ -152,6 +159,8 @@ flowchart LR
 | `rca` | الاستثناء يصعد؛ الحادثة تبقى `investigating` ويُسجَّل الخطأ | **حرج** — لذلك لا يُعطَّل |
 | `guardrail` | أي استثناء ← الموافقة تفشل (fail closed) | لا تنفيذ |
 | `execution` | `approvalStatus = failed` + Audit `execute_failed` | لا تعافٍ تلقائي |
+| `vendor` | لا `vendorContext` ولا `vendorCommands` في الخطة (تبقى الخطة الأساسية كاملة) | الحادثة والموافقة يكملان |
+| `logs` | `POST /api/syslog` ← 503؛ القياسات الدورية تبقى | لا سقوط منفذ من السجلات |
 | `verification` | `verification = null` | الإغلاق يكمل |
 | `learning` | يُسجَّل `history` فقط بدون تقرير | الإغلاق يكمل |
 | `copilot` | `/api/copilot/ask` ← 503 | لا أثر على الحادثة |
@@ -169,7 +178,7 @@ flowchart LR
 - **المهمة:** تشغيل التشخيص بترتيب ثابت، تطبيق مهلة وبدائل، ثم **تسليم الحالة للإنسان**.
 - **المدخلات:** حادثة فيها أعراض (`IncidentState`) + قائمة الخدمات المتأثرة.
 - **المخرجات:** `Investigation` (top, confidence, root, candidates, impactPath, explanation, knowledge…) + خطوات `investigate` و`handoff_to_human` و`incident_closed`.
-- **كيف يعمل:** `investigate()` يستدعي بالترتيب: `telemetry.incident_context` → `correlation.storm_summary` → `topology.scope` → `rca.rank` (حرج) → `topology.impact` → `detection.multivariate` → `explanation.write` → `knowledge.related`. كل استدعاء اختياري يمر عبر `safe()`: يتخطى إن كان الوكيل معطّلًا، ويقطع عند المهلة، ويبتلع الخطأ (الوكيل سجّله بنفسه).
+- **كيف يعمل:** `investigate()` يستدعي بالترتيب: `telemetry.incident_context` → `correlation.storm_summary` → `topology.scope` → `rca.rank` (حرج) → `topology.impact` → `detection.multivariate` → `explanation.write` → `knowledge.related` → `vendor.enrich`. كل استدعاء اختياري يمر عبر `safe()`: يتخطى إن كان الوكيل معطّلًا، ويقطع عند المهلة، ويبتلع الخطأ (الوكيل سجّله بنفسه).
 - **يحتاج:** `AgentRuntime` + `AGENT_TIMEOUT_S`.
 - **الضوابط:** لا يملك أداة `approve` ولا `execute`؛ لا يُعطَّل.
 - **عند الفشل:** فشل RCA يصعد كاستثناء (لا تشخيص بدون سبب).
@@ -200,7 +209,8 @@ flowchart LR
 - **الفائدة:** إجابات «من يتأثر؟» من الرسم؛ وتظليل مسار السبب ومسار التأثر على الخريطة.
 - **المهمة:** امتلاك رسم الاعتماديات (NetworkX): الخدمات ↔ الروابط ↔ الأجهزة، upstream/downstream، ونطاق التأثر، وكشف الانحراف.
 - **المدخلات:** معرّفات عناصر؛ جيران CDP/LLDP المرصودون.
-- **المخرجات:** الخدمات المتأثرة، `impactPath`، `path(a,b)`، تقرير انحراف `reconcile`.
+- **المخرجات:** الخدمات المتأثرة، `impactPath`، `path(a,b)`، تقرير انحراف `reconcile`، وطرفا كل رابط (جهاز + منفذ) لتستعملهما `vendor` و`logs`.
+- **تعديل (دعم المصنّعين):** حقول اختيارية في عقدة الطوبولوجيا: `vendor` (تلميح نصي حر مثل «Juniper EX4300»)، `sysDescr`، `sysObjectId`، `os` — يقرؤها `vendor` لتحديد المصنّع/النظام/الإصدار. بدونها يبقى كل شيء يعمل.
 - **كيف يعمل:** `scope()` قبل RCA يحسب سلاسل اعتماد كل خدمة متأثرة؛ `impact(root)` بعد RCA يحسب ما بعد السبب؛ `reconcile()` يقارن (device, port, neighbor, neighborPort) بالمعلن في `configs/topology.json` ويُرجع `unexpected` و`missing`.
 - **يحتاج:** `configs/topology.json` (المنافذ تُعرَّف هناك فقط) + نقطة vantage.
 - **الضوابط:** قراءة فقط؛ لا يخترع معرّفات.
@@ -234,7 +244,7 @@ flowchart LR
 
 ### 4.8 `knowledge` — وكيل المعرفة (RAG)
 - **الفائدة:** «هذه الحادثة شبيهة بـINC-0007 وهذه خطوة الـrunbook» — في أجزاء من الثانية وبمصدر.
-- **المصادر المفهرسة:** `docs/*.md`، `README.md`، `RootIQ_Daily_Plan.md` (وزنه 0.6 لضخامته)، `configs/topology.json` (وصف نصي لكل جهاز/رابط/خدمة)، العتبات، الـplaybooks الثلاثة، `lab/configs/*` (بعد حجب الأسرار)، الحوادث الحية، وتقارير ما بعد الحادثة.
+- **المصادر المفهرسة:** كتالوج المصنّعين (`kind=vendor`: ملف لكل مصنّع، و`vendor-cmd`: جدول أوامر لكل نظام) وكتالوج المشاكل (`kind=problem`) — وزنهما 0.9 كي لا يطغيا على وثائق المشروع؛ ثم `docs/*.md`، `README.md`، `RootIQ_Daily_Plan.md` (وزنه 0.6 لضخامته)، `configs/topology.json` (وصف نصي لكل جهاز/رابط/خدمة)، العتبات، الـplaybooks الثلاثة، `lab/configs/*` (بعد حجب الأسرار)، الحوادث الحية، وتقارير ما بعد الحادثة.
 - **كيف يعمل:** تقطيع Markdown بحسب العناوين (≤ 900 حرف) ← تنظيف وحجب أسرار ← TF-IDF (كلمات + ثنائيات، `sublinear_tf`، كلمات وقف EN/AR، تطبيع عربي: تشكيل/همزات/ياء/تاء مربوطة/«ال») ← تشابه جيب التمام ← عتبة `RAG_MIN_SCORE=0.10`.
 - **`related(inc)`:** بعد RCA يبحث عن حوادث/تقارير مشابهة (استبعاد نفس الحادثة) + مراجع (docs/playbook/topology) ويضعها في `incident.knowledge` (تظهر في لوحة الحادثة).
 - **الضوابط:** الأسرار محجوبة قبل الفهرسة؛ المقاطع التي تحاول توجيه النموذج (عبارات أوامر مضمَّنة في النص) تُعلَّم `suspicious` ولا تصل للجواب؛ لا نتائج دون العتبة.
@@ -244,7 +254,7 @@ flowchart LR
 
 ### 4.9 `copilot` — وكيل المساعد
 - **الفائدة:** سؤال بالعربية أو الإنجليزية بدل التنقل: «لماذا ليس DNS؟»، «ماذا أفعل؟»، «كم زمن الوصول للسبب؟».
-- **النوايا (Intents):** `incident_summary` · `why_cause` · `why_not` · `impact` · `recommend` · `audit` · `kpi` · `similar` · `status` · `action_request` (يرفض بلطف) · `docs` (RAG عام).
+- **النوايا (Intents):** `incident_summary` · `why_cause` · `why_not` · `impact` · `recommend` · `audit` · `kpi` · `similar` · `status` · `action_request` (يرفض بلطف) · `vendor_help` (أوامر/مشاكل/مصنّعون من قاعدة المعرفة — حتمي حرفي ولا يُعاد صياغته بالـLLM) · `docs` (RAG عام).
 - **كيف يعمل:** يكشف اللغة ← يصنّف النية (كلمات مطبّعة EN/AR) ← يحدد العنصر المذكور (`DNS`, `APP-01`, `R1 Gi0/0`…) ← يجمع حقائق من قراءات حية (حادثة/طوبولوجيا/Audit/KPIs) ← جواب حتمي مع مصادر `[1] [2]`. إن فُعّل LLM: يعيد الصياغة بشرطين: كل رقم مؤسَّس على (الحقائق + السياق + السؤال) ووجود استشهاد `[n]` لسؤال الوثائق؛ وإلا يبقى الجواب الحتمي.
 - **للقراءة فقط بالبناء:** لا توجد أداة `approve/reject/execute/inject/toggle` (قائمة `TOOLS`)، واختبار يفحص كود الملف حرفيًا. طلب «وافق على الإجراء» ← يرد أنه للقراءة فقط ويحيل لزرّي Approve/Reject.
 - **مقاومة الحقن:** مقاطع الوثائق **بيانات**؛ المشبوهة تُستبعد وتظهر في `warnings`؛ والسؤال نفسه إن بدا كتعليمات يُنبَّه عليه.
@@ -255,6 +265,7 @@ flowchart LR
 ### 4.10 `remediation` — مخطِّط المعالجة
 - **الفائدة:** الموافقة على **خطة**: خطوات، أثر، تراجع، ومعيار نجاح رقمي.
 - **كيف يعمل:** يختار Playbook واحدًا لنوع السبب (link → `PB-LINK-QOS`، svc-dns → `PB-DNS-RESTART`، server → `PB-SERVER-KILL-RUNAWAY`) ويملأ: `preconditions`, `steps` (read/change/verify + أمر توضيحي), `rollback`, `verification` (معايير رقمية مثل `link_utilization < 70`), `blastRadius`, `riskFactors`, `labImplementation`. ترتفع المخاطرة درجة إن كانت الثقة < 55%.
+- **تعديل (دعم المصنّعين):** إن وُجد `vendorContext` يُضيف للخطة `plan.vendorCommands` = {المشكلة المطابقة، الأجهزة، `diagnose` (أوامر قراءة لكل جهاز حسب مصنّعه ونظامه)، `fixes` (أوامر مرجعية تحتاج موافقة)، `executable: false`}. هذه **نص مرجعي للمهندس** ولا ينفّذها RootIQ؛ ما يُنفَّذ بعد الموافقة يبقى الـplaybook الأبيض.
 - **الضوابط:** من الكتالوج فقط؛ `requiresApproval=true`, `autoExecutable=false` دائمًا.
 - **ملاحظة صدق:** ما ينفّذه وكيل المختبر فعليًا endpoint ثابت لكل سيناريو (مثلًا إيقاف iperf3 لسيناريو الازدحام)؛ حقل `labImplementation` يذكر ذلك صراحة. تطبيق QoS الحقيقي عبر Netmiko مسار إنتاجي لاحق (انظر BLUEPRINT §9).
 - **الاختبار:** `test_agent_flow.py::test_all_three_scenarios_get_a_matching_playbook`.
@@ -273,6 +284,7 @@ flowchart LR
 | `rate_limit` | approve | **block** | ≤ `GUARDRAIL_MAX_EXECUTIONS` (5) تنفيذات كل 5 دقائق |
 | `lab_scope` | approve (وضع live) | **block** | `LAB_AGENT_URL` عنوان خاص/loopback أو اسم داخلي — عزل المختبر |
 | `execution_switch` | approve (live) | warn + **Dry run** | `ROOTIQ_EXECUTION_ENABLED=0` ← تُسجَّل الموافقة ولا يُغيَّر شيء |
+| `vendor_commands_read_only` | recommend, approve | **block** | كل أمر تشخيص في `plan.vendorCommands` يبدأ بفعل قراءة معروف ولا يحوي فعل تغيير، و`executable=false`، وكل إصلاح `needsApproval` |
 | `low_confidence` | recommend, approve | warn | الثقة < 55% |
 | `blast_radius` | recommend, approve | warn | 7+ عناصر downstream |
 
@@ -300,6 +312,45 @@ flowchart LR
 - **الضوابط:** يكتب فقط في `data/postmortems`؛ **لا يغيّر الأوزان أو العتبات تلقائيًا**.
 - **API:** `GET /api/incidents/{id}/postmortem`.
 - **الاختبار:** `test_agent_flow.py::test_second_incident_finds_the_first_as_similar`.
+
+### 4.15 `logs` — وكيل السجلات (Syslog) **جديد**
+- **الفائدة:** سقوط منفذ يُلتقط من سجل الجهاز نفسه خلال ثانية، على أي مصنّع تغطيه القاعدة، لا من الاستطلاع الدوري فقط.
+- **المهمة:** تحويل أسطر syslog الخام إلى أحداث موحّدة عبر أنماط المصنّعين في قاعدة المعرفة، وإدخال أحداث حالة الرابط في الـpipeline.
+- **المدخلات:** `POST /api/syslog` `{device, vendor?, lines[≤200]}` (نفس رمز الإدخال `X-RootIQ-Token` ونفس حد المعدل كـ`/api/events`).
+- **المخرجات:** لكل سطر `{parsed, vendor, event, interface, state, link, pushed, alsoMatches}` + حدث `syslog_link_down` (1 = سقط، 0 = عاد) على **الرابط** المقابل للمنفذ.
+- **كيف يعمل:** تنظيف السطر (حذف رموز التحكم، ≤ 1000 حرف) ← تلميح المصنّع من الطوبولوجيا (أو من الطلب) ← `parse_syslog` (أنماط 7 مصنّعين: Cisco IOS/NX-OS، Junos، Arista، Huawei VRP، MikroTik، Extreme، Linux) ← توحيد اسم المنفذ (`GigabitEthernet0/0` = `Gi0/0`) ← `port_to_link` ← `pipeline.ingest`. الأحداث غير الخاصة بالمنافذ (OSPF/BGP/STP…) تُوحَّد وتُخزَّن ولا تفتح حادثة بمفردها.
+- **الصيغ المشتركة:** بعض الصيغ تخص أكثر من مصنّع (مثل `%LINEPROTO-5-UPDOWN` عند Cisco وArista)؛ يُفضَّل تلميح الجهاز في الطوبولوجيا، وإلا يُختار الأكثر شيوعًا مع إرجاع `alsoMatches`.
+- **الضوابط:** ما لا يُعرف يُعدّ `unparsed` ولا يُخمَّن؛ منفذ غير موجود في الطوبولوجيا لا يُرسل للـpipeline؛ لا يفتح حادثة إلا «سقوط» على رابط معروف.
+- **يحتاج:** أن تُضبط الأجهزة لإرسال syslog إلى المجمّع/الـAPI (المجمّع الحالي لا يشغّل مستمع UDP 514 بعد — انظر §10).
+- **الكود/الاختبار:** `agents/logs.py`, `api/vendors.py` — `test_vendor_agents.py` (`test_cisco_link_down_line_becomes_a_link_event_and_opens_an_incident` وأخواته).
+
+### 4.16 `vendor` — وكيل معرفة المصنّعين **جديد**
+- **الفائدة:** حادثة «أخطاء CRC» نفسها تحصل على أوامر Cisco IOS-XE أو Junos أو Arista EOS أو Huawei VRP أو MikroTik أو Linux الصحيحة، فلا يترجم المهندس بين واجهات الأوامر.
+- **المهمة:** (1) التعرّف على مصنّع/نظام/إصدار/موديل كل جهاز من `sysObjectID` و`sysDescr` وتلميح نصي؛ (2) مطابقة الحادثة مع أنماط مشاكل معروفة (25 نمطًا: ازدحام، CRC، duplex، flapping، err-disabled، STP، loop، MTU، LACP، OSPF/BGP، CPU/ذاكرة، حرارة/مراوح، PoE، بصريات، DHCP/DNS، NTP، SNMP، EoL…)؛ (3) توفير أوامر الفحص (قراءة فقط) وأوامر الإصلاح المرجعية (تحتاج موافقة) بلغة كل جهاز.
+- **المدخلات:** سبب جذري + المقاييس الشاذة في الحادثة + هوية الأجهزة من الطوبولوجيا.
+- **المخرجات:** `incident.vendorContext = {rootEntity, kind, devices[], problems[{id,title,causes,diagnose[],fixes[],verify}], known}`.
+- **كيف يعمل:** `devices_for(root)` (رابط ← طرفاه مع المنفذ؛ خدمة ← مضيفها؛ جهاز ← نفسه) ← `identify` لكل جهاز ← `problems_for(metrics, kind)` (مقاييس + نوع السبب، ويُستبعد ما لا ينطبق: خادم لا يُخبَر بحلقة L2) ← `checks_for` / `fix_commands` لكل جهاز.
+- **التغطية بصراحة:** `full` (5: Cisco، Juniper، Arista، Huawei، HPE/Aruba)، `partial` (7)، `profile-only` (31 — تعريف فقط بلا أوامر). كل مصنّع له `confidence`. الموديلات على مستوى **العائلة/السلسلة** (103 عائلة) لا كل SKU. انظر `docs/VENDORS.md`.
+- **الضوابط:** أوامر القراءة تمر بقائمة سماح أفعال وقائمة منع أفعال (عند التحقق من البيانات وعند حكم الـGuardrail)؛ أوامر التغيير مسموحة فقط لـ`clear_counters` و`bounce_interface` وتحتاج موافقة؛ اسم المنفذ يُتحقق منه بنمط آمن؛ مصنّع غير معروف يُذكر «غير معروف» ولا يُخمَّن.
+- **API:** `GET /api/vendors` · `/api/vendors/{id}` · `/api/vendors/inventory` · `POST /api/vendors/identify` · `GET /api/problems` · `/api/problems/{id}?vendor=&os=&interface=`.
+- **الكود/الاختبار:** `agents/vendor.py`, `knowledge/loader.py`, `knowledge/data/` — `test_knowledge_base.py`, `test_vendor_agents.py`.
+
+---
+
+## 4b. ماذا أُضيف وماذا عُدّل لدعم «كل المصنّعين» (الجواب المختصر)
+
+| النوع | الوكيل | ما تغيّر |
+|---|---|---|
+| **أُضيف** | `vendor` | هوية الجهاز، مطابقة المشاكل، أوامر كل مصنّع |
+| **أُضيف** | `logs` | Syslog متعدد المصنّعين ← أحداث الروابط |
+| **عُدّل** | `topology` | حقول اختيارية `sysDescr/sysObjectId/os` وطرفا الرابط |
+| **عُدّل** | `knowledge` | فهرسة المصنّعين والمشاكل (`vendor`, `vendor-cmd`, `problem`) |
+| **عُدّل** | `copilot` | نية `vendor_help` (أوامر/مشاكل/مصنّعون، للقراءة فقط) |
+| **عُدّل** | `remediation` | `plan.vendorCommands` |
+| **عُدّل** | `guardrail` | سياسة `vendor_commands_read_only` |
+| **عُدّل** | `orchestrator` | خطوة `vendor.enrich` بعد `knowledge` |
+| **يصلح كما هو** | `telemetry` (IF-MIB محايد للمصنّع)، `detection`، `correlation`، `rca`، `explanation`، `execution`، `verification`، `learning` | لا يعرفون المصنّع أصلًا؛ يعملون على مقاييس موحّدة |
+| **مقترح لاحقًا (لم يُنفَّذ)** | `lifecycle` (EoL/CVE من نشرات المصنّعين)، `config` (نسخ احتياطي/مقارنة + منفّذ Netmiko متعدد المصنّعين)، `capacity` | يحتاجون مصادر خارجية وتنفيذًا حقيقيًا على الأجهزة |
 
 ---
 
@@ -335,9 +386,14 @@ flowchart LR
 | GET | `/api/incidents/{id}/postmortem` | تقرير ما بعد الحادثة |
 | POST | `/api/incidents/{id}/acknowledge` | إقرار الاطلاع (كان في المواصفة §9) |
 | POST | `/api/topology/reconcile` | مقارنة جيران CDP/LLDP بالمعلن |
+| GET | `/api/vendors` · `/api/vendors/{id}` · `/api/vendors/inventory` | قاعدة معرفة المصنّعين وهوية أجهزة الطوبولوجيا |
+| POST | `/api/vendors/identify` | تعرّف على مصنّع/نظام/إصدار من `sysDescr`/`sysObjectId`/تلميح |
+| GET | `/api/problems` · `/api/problems/{id}?vendor=&os=&interface=` | كتالوج المشاكل وأوامر الفحص لمصنّع محدد |
+| POST | `/api/syslog` | أسطر syslog خام (رمز الإدخال) ← أحداث موحّدة |
+| GET | `/api/syslog/recent` | آخر الأحداث الموحّدة وإحصاءات المصنّعين |
 | WS | `agent_step` | خطوة وكيل جديدة (بجانب `snapshot/link/node/service/alert/incident/demo`) |
 
-حقول جديدة اختيارية في الحادثة: `verification`, `knowledge`, `acknowledgedBy/At`؛ وفي الإجراء: `plan`, `guardrailWarnings`, `dryRun`. كود الحالة الجديد: **403** عند رفض Guardrail لـ`approve/reject`.
+حقول جديدة اختيارية في الحادثة: `verification`, `knowledge`, `vendorContext`, `acknowledgedBy/At`؛ وفي الإجراء: `plan` (وفيه `vendorCommands`), `guardrailWarnings`, `dryRun`. كود الحالة الجديد: **403** عند رفض Guardrail لـ`approve/reject`.
 
 ---
 
@@ -363,14 +419,16 @@ flowchart LR
 ```powershell
 cd backend
 $env:ROOTIQ_MODE = 'sim'
-.\.venv\Scripts\python.exe -m pytest -q          # ~140 اختبارًا، ثوانٍ معدودة
+.\.venv\Scripts\python.exe -m pytest -q          # ~230 اختبارًا، ثوانٍ معدودة
 cd ..\frontend
 npx tsc --noEmit; npx vitest run src
 ```
 
 | الملف | يغطي |
 |---|---|
-| `test_agents.py` | اكتمال الـ14 وكيلًا وثيقتهم، المخطط، مفاتيح التعطيل، الأثر |
+| `test_agents.py` | اكتمال الـ16 وكيلًا وثيقتهم، المخطط، مفاتيح التعطيل، الأثر |
+| `test_knowledge_base.py` | سلامة بيانات المصنّعين (validate)، التعرّف من sysDescr/sysObjectID، الإصدارات، الأوامر (قراءة فقط)، Syslog، المشاكل EN/AR، ورفض البيانات الفاسدة |
+| `test_vendor_agents.py` | `vendor` و`logs` والخطة والـGuardrail والـRAG والـCopilot وطبقة الـAPI |
 | `test_guardrail.py` | كل السياسات والمراحل (بارامتري) |
 | `test_agent_flow.py` | التدفق الكامل، رفض الوكلاء، الرفض ثم الموافقة، Dry run، التحقق، التقرير، التعلّم، المهلة، التعطيل، القياسات، الطوبولوجيا |
 | `test_copilot.py` | النوايا EN/AR، القراءة فقط، حدود LLM، حقن، «لم أجد» |
@@ -395,4 +453,5 @@ npx tsc --noEmit; npx vitest run src
 - فهرس الـRAG لغوي (TF-IDF) لا دلالي؛ الأسئلة المصاغة بمرادفات بعيدة قد لا تجد المقطع. الترقية إلى embeddings/pgvector موصوفة في BLUEPRINT §9.
 - `verification` لا يمنع الإغلاق: بعد مهلة `VERIFY_GRACE_S` تُغلق الحادثة كـ`unverified` ويقترح التقرير مراجعة التراجع.
 - جُرّب Groq بمفتاح حقيقي فقط؛ **Gemini وClaude** مختبران بمحاكاة الطلب (mock) وأسماء نماذجهما الافتراضية غير مؤكدة على حسابك.
+- **حدود قاعدة المصنّعين (بصراحة):** 43 مصنّعًا لكن 31 منهم «تعريف فقط»؛ الموديلات بمستوى العائلة لا كل SKU؛ الأوامر وأنماط syslog كُتبت من المعرفة العامة وعلامة `confidence` تبيّن ثقتها، ولم تُلتقط من أجهزة حقيقية؛ أرقام IANA PEN فُحصت مقابل سجل IANA؛ إضافة مصنّع/أمر تتم بتعديل JSON فقط ثم `validate()` (انظر `docs/VENDORS.md`). المجمّع (`collectors/`) ووكيل المختبر ما زالا خاصين بمختبر Cisco ولا يشغّلان مستمع syslog؛ الإدخال حاليًا عبر `POST /api/syslog`.
 - تحليل الحادثة لا يُلغى أثناء تشغيله: كان كل عرَض جديد يلغي التحليل الجاري فيتأخر السبب الجذري إلى نحو 80 ثانية عند بطء الـLLM/RAG. أُصلح ومغطى باختبار انحدار (`test_slow_agents_do_not_get_their_analysis_cancelled_by_new_symptoms`).

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
 from app.core.config import settings
+from app.knowledge import get_kb
 
 from .base import Agent
 from .playbooks import ALLOWED_ACTIONS, WIDE_BLAST_ELEMENTS
@@ -91,6 +92,22 @@ class GuardrailAgent(Agent):
         now = time.time()
         return sum(1 for t in self.executions if now - t <= WINDOW_S)
 
+    @staticmethod
+    def _vendor_command_violations(vc: dict) -> list[str]:
+        kb = get_kb()
+        bad: list[str] = []
+        if vc.get("executable") is not False:
+            bad.append("vendorCommands.executable must be false")
+        for d in vc.get("diagnose", []):
+            for chk in d.get("checks", []):
+                for cmd in chk.get("commands", []):
+                    if not kb.is_read_only(cmd):
+                        bad.append(f"{d.get('device')}: {cmd!r}")
+        for f in vc.get("fixes", []):
+            if f.get("needsApproval") is not True:
+                bad.append(f"fix {f.get('id')} does not require approval")
+        return bad
+
     # ---- policy engine (pure, unit-testable) ----
     def evaluate(
         self,
@@ -149,6 +166,12 @@ class GuardrailAgent(Agent):
                     v.execute = False
                     add(Check("execution_switch", False, "warn",
                               "Execution is switched off (ROOTIQ_EXECUTION_ENABLED=0): approval is recorded, remediation is a dry run"))
+
+        if stage in ("recommend", "approve") and plan.get("vendorCommands"):
+            bad = self._vendor_command_violations(plan["vendorCommands"])
+            add(Check("vendor_commands_read_only", not bad, "block",
+                      "Vendor diagnostic commands must be read-only, non-executable and fixes must need approval — violations: "
+                      + "; ".join(bad[:3]) if bad else "Vendor diagnostic commands are read-only reference text (not executed)"))
 
         if stage in ("recommend", "approve") and incident is not None:
             low = bool(getattr(incident, "needs_investigation", False))

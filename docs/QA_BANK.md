@@ -14,11 +14,11 @@ Short answers for the pitch. Pair with `docs/ARCHITECTURE.md` and `docs/RESULTS.
 | Business model? | Subscription by monitored assets + enterprise integration + private deploy. First customers: enterprise NOCs, MSPs, DC/cloud ops. |
 | What’s next? | Pilot with a real NOC: auto-discovery, broad SNMP, RBAC, ITSM hooks, then capacity foresight and change-impact analysis. |
 | Is the data real or fake? | Live path uses a real EVE-NG lab (virtual Cisco + real iperf3). Sim mode is the backup and is **labeled on screen** when used. Measured numbers in `RESULTS.md` are from sim lab runs on this build (live lab fills the same table when available). |
-| Is it really a multi-agent system? | Yes — 14 agents, each with one job, explicit inputs/outputs, limited tools and a traceable step (Agents page → Live trace). Twelve are deterministic; only Explanation and the Copilot can use an LLM, optionally. |
+| Is it really a multi-agent system? | Yes — 16 agents, each with one job, explicit inputs/outputs, limited tools and a traceable step (Agents page → Live trace). Fourteen are deterministic; only Explanation and the Copilot can use an LLM, optionally. |
 | Can the AI act on its own? | No. Advisors only recommend. The Execution agent refuses without a named human approval **and** a fresh Guardrail verdict; `system` / `agent:*` approvals get HTTP 403 and are audited. |
 | What if the LLM hallucinates? | Any number not present in the measured facts rejects the answer and we fall back to the template; Copilot answers must also cite sources. Everything works with the LLM off. |
 | Can someone poison the docs to hijack the assistant? | Retrieved text is treated as data, injection-looking passages are excluded and flagged, and the Copilot has no tool that can approve, reject or execute. |
-| Why 14 agents and not one big model? | Small units are testable, auditable and degrade independently (a slow LLM never blocks an incident); a single model would be a black box with execution risk. |
+| Why 16 agents and not one big model? | Small units are testable, auditable and degrade independently (a slow LLM never blocks an incident); a single model would be a black box with execution risk. |
 | How do the agents learn? | The Learning agent records confirmed root causes (raising confidence next time), writes a postmortem and feeds it back into the knowledge index. Weights and thresholds are never changed automatically. |
 
 ## Who answers what

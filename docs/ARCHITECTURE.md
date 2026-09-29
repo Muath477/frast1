@@ -45,13 +45,15 @@ Badge on the UI always shows the active mode.
 
 ## Multi-agent layer (added on branch `my-edits`)
 
-14 specialised agents (12 fully deterministic) run the investigation and stop at a human gate. Full detail: [`AGENTS.md`](AGENTS.md); the big picture and spec compliance: [`BLUEPRINT.md`](BLUEPRINT.md).
+16 specialised agents (14 fully deterministic) run the investigation and stop at a human gate. Two of them (`logs`, `vendor`) make it vendor-aware: see [`VENDORS.md`](VENDORS.md). Full detail: [`AGENTS.md`](AGENTS.md); the big picture and spec compliance: [`BLUEPRINT.md`](BLUEPRINT.md).
 
 ```mermaid
 flowchart LR
   EV[event] --> TEL[telemetry] --> DET[detection] --> COR[correlation] --> RCA[rca]
+  SYS[syslog] --> LOG[logs] --> DET
   TOP[topology] --> RCA
-  RCA --> EXP[explanation] & KNO[knowledge / RAG]
+  RCA --> EXP[explanation] & KNO[knowledge / RAG] & VEN[vendor]
+  VEN --> REM
   RCA --> REM[remediation] --> GR[guardrail]
   GR --> H{{engineer approves}} --> GR2[guardrail] --> EXE[execution] --> VER[verification] --> LRN[learning]
   LRN --> KNO --> COP[copilot - read only]

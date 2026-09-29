@@ -70,6 +70,7 @@
   "agents.llmOn": "النموذج اللغوي: {{provider}} · {{model}}",
   "agents.llmOff": "وضع حتمي (بدون نموذج لغوي)",
   "agents.kb": "قاعدة المعرفة: {{n}} مقطع",
+  "agents.vendors": "قاعدة المصنّعين: {{n}} مصنّعًا ({{full}} كاملة)",
   "agents.dataQuality": "جودة البيانات {{pct}}%",
   "agents.trace.incident": "الحادثة",
   "agents.trace.all": "كل النشاط",
