@@ -1,4 +1,4 @@
-﻿# RootIQ
+# RootIQ
 
 **Find the cause before it becomes an outage** — alert storm → one incident → evidence-backed RCA → engineer approve-only remediation in under 60 seconds.
 
@@ -6,45 +6,92 @@
 
 Venture X Hackathon — Infrastructure & Cloud · Mode: **sim-first** (live EVE-NG additive)
 
-> **الفرع `my-edits`** يحوي كل تعديلات الطبقة الذكية (الوكلاء، قاعدة المصنّعين، التدريب). إن رأيتَ README قديمًا فأنت على `main`: بدّل الفرع من قائمة الفروع في أعلى صفحة GitHub إلى **`my-edits`**، أو اقرأ [`CHANGELOG.md`](CHANGELOG.md).
-> *This branch (`my-edits`) holds all the AI-layer work: agents, the vendor knowledge base and the training folder. On GitHub, switch the branch selector to `my-edits`.*
+---
 
-## ما الجديد في هذا الفرع · What's new
+## What's new on the `my-edits` branch
 
-| المجال | ماذا أُضيف | التفاصيل |
+> You are reading the `my-edits` branch. If GitHub shows an older README, you are on `main`: use the branch selector (top left) and pick **`my-edits`**. Full history: [`CHANGELOG.md`](CHANGELOG.md).
+
+### Agents: **16** (previously 14)
+
+Per-agent details: [`docs/AGENTS.md`](docs/AGENTS.md).
+
+### Supported vendors
+
+43 vendors in the knowledge base. Full table with every vendor: [`docs/VENDORS.md`](docs/VENDORS.md).
+
+| Vendor | OS families | Coverage | Confidence |
+|---|---|---|---|
+| Cisco | IOS XE, IOS, NX-OS, IOS XR | full | high |
+| Juniper | Junos | full | high |
+| Arista | EOS | full | high |
+| HPE Aruba | AOS-CX, ArubaOS-Switch | full | medium |
+| Huawei | VRP | full | medium |
+| Fortinet | FortiSwitchOS, FortiOS | partial | low |
+| Dell | OS10, DNOS6, OS9 | partial | medium |
+| Extreme | EXOS, VOSS | partial | medium |
+| MikroTik | RouterOS, SwOS | partial | medium |
+| NVIDIA | Cumulus, ONYX | partial | medium |
+| H3C | Comware | partial | medium |
+| Linux servers | Linux | partial | medium |
+| 31 more (TP-Link, D-Link, Netgear, Zyxel, Ubiquiti, Nokia, Palo Alto, Check Point, ...) | — | identification only | — |
+
+*Coverage*: **full** = curated commands and identification rules; **partial** = some of them; **identification only** = the vendor and OS are recognized but no commands are curated (RootIQ says so instead of guessing).
+
+### Everything else that was added
+
+| Area | Summary | Read |
 |---|---|---|
-| **16 وكيلًا** | من 14 إلى 16: `vendor` (هوية الجهاز + أوامر كل مصنّع) و`logs` (Syslog متعدد المصنّعين). Guardrail يفرض أن أوامر التشخيص للقراءة فقط | [`docs/AGENTS.md`](docs/AGENTS.md) |
-| **قاعدة معرفة المصنّعين** | 43 مصنّعًا · 59 نظام تشغيل · 103 عائلة أجهزة · 25 نمط مشكلة · 26 «قدرة» موحّدة، بتغطية وثقة معلنتين لكل مصنّع | [`docs/VENDORS.md`](docs/VENDORS.md) |
-| **Cisco + Juniper + Fortinet + Aruba + Arista** | لكل نظام: أوامر الفحص بصيغته، **طريقة حفظ الإعداد** (`write memory` / `commit` / حفظ تلقائي)، التراجع، وأسلوب كتابة الأوامر | [`docs/VENDORS.md` §3b](docs/VENDORS.md) |
-| **Syslog** | `POST /api/syslog`: سطر «المنفذ سقط» من أي مصنّع مدعوم يفتح حادثة على الرابط الصحيح | [`docs/AGENTS.md` §4.15](docs/AGENTS.md) |
-| **Copilot + RAG** | يجيب عن أوامر ومشاكل وحفظ الإعداد لأي مصنّع (حتى 4 جنبًا إلى جنب)، حرفيًا من القاعدة وبمصدر | [`docs/AGENTS.md` §4.9](docs/AGENTS.md) |
-| **الواجهة** | في خطة الحادثة: «Vendor diagnostics» و«Applying a change»؛ وصفحة Agents فيها 16 وكيلًا | `frontend/src/components/incidents/VendorCommands.tsx` |
-| **التدريب** | مجلد [`training/`](training/README.md): بيانات مولَّدة من القاعدة (≈4.7 ألف مثال EN/AR في 10 مهام)، مقيّم آلي، كتالوج Hugging Face، ودفتر Colab | [`training/README.md`](training/README.md) · [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) |
-| **معمل متعدد المصنّعين** | مثال جاهز: Cisco + Juniper vQFX + Arista vEOS + FortiGate-VM + Aruba AOS-CX | [`configs/topology.multivendor.example.json`](configs/topology.multivendor.example.json) |
-| **الاختبارات** | 262 backend (كانت 151) + اختبارات بيانات التدريب والدفتر | `cd backend && pytest -q` |
+| Vendor knowledge base | 43 vendors · 59 OS families · 103 device series · 25 problem patterns · coverage and confidence stated per vendor | [`docs/VENDORS.md`](docs/VENDORS.md) |
+| Priority vendors | Cisco (the lab), Juniper, Fortinet, Aruba, Arista: command syntax, **how a change is saved** (`write memory` / `commit` / auto-save), rollback, CLI style | [`docs/VENDORS.md`](docs/VENDORS.md) §3b |
+| Syslog | `POST /api/syslog` (same ingest token as `/api/events`) | [`docs/AGENTS.md`](docs/AGENTS.md) §4.15 |
+| Copilot | Answers command, problem and save-config questions for up to 4 vendors side by side, verbatim from the knowledge base, with sources | [`docs/AGENTS.md`](docs/AGENTS.md) §4.9 |
+| UI | Incident plan shows **Vendor diagnostics** and **Applying a change**; the Agents page lists all 16 agents | `frontend/src/components/incidents/VendorCommands.tsx` |
+| Training | `training/`: generated dataset (about 4.7k EN/AR examples, 10 tasks), offline evaluator, Hugging Face catalog, Colab notebook | [`training/README.md`](training/README.md) · [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) |
+| Mixed-vendor lab | Example topology: Cisco + Juniper vQFX + Arista vEOS + FortiGate-VM + Aruba AOS-CX | [`configs/topology.multivendor.example.json`](configs/topology.multivendor.example.json) |
+| Tests | 262 backend tests (151 before) | `cd backend && pytest -q` |
 
-سجل التغييرات الكامل: [`CHANGELOG.md`](CHANGELOG.md).
+### Honest limits
 
-### جرّبها في دقيقتين (بعد تشغيل الـbackend)
+- The knowledge base is **not exhaustive**: 5 vendors with full coverage, 7 partial, 31 identification-only. Devices are known by **family/series**, not by every SKU.
+- Commands and syslog patterns were written from general knowledge, not captured from real devices. Every vendor carries a confidence level; **Fortinet is the weakest**.
+- RootIQ shows vendor commands to the engineer and never pushes them to a device.
+- GPU training (Colab) has not been run; dataset generation, the evaluator and the notebook's CPU cells are tested.
+
+<div dir="rtl">
+
+### الملخص بالعربي
+
+**عدد الوكلاء: 16** (كانوا 14).
+
+- **قاعدة المصنّعين:** 43 مصنّعًا، 59 نظام تشغيل، 103 عائلة أجهزة، 25 نمط مشكلة، وتغطية وثقة معلنتان لكل مصنّع.
+- **Cisco وJuniper وFortinet وAruba وArista:** لكل نظام أسلوب كتابة الأوامر وطريقة حفظ الإعداد والتراجع عنه.
+- **المساعد الذكي (Copilot):** يجيب عن الأوامر والمشاكل وحفظ الإعداد لعدة مصنّعين جنبًا إلى جنب، حرفيًا من القاعدة.
+- **الواجهة:** خطة الحادثة تعرض «Vendor diagnostics» و«Applying a change».
+- **التدريب:** مجلد `training/` فيه بيانات مولَّدة من القاعدة، ومقيّم آلي، وكتالوج Hugging Face، ودفتر Colab.
+- **الاختبارات:** 262 اختبارًا.
+
+**حدود صريحة:** القاعدة ليست شاملة (تغطية كاملة لخمسة مصنّعين فقط)، والأوامر لم تُلتقط من أجهزة حقيقية (Fortinet أضعفها ثقةً)، وRootIQ يعرض الأوامر للمهندس ولا ينفّذها.
+
+</div>
+
+### Try it in 2 minutes (backend running)
 
 ```bash
-# 1) هوية جهاز من sysDescr
+# 1) Identify a device from its sysDescr
 curl -s -X POST localhost:8000/api/vendors/identify -H 'content-type: application/json' \
   -d '{"sysDescr":"Juniper Networks, Inc. ex4300-48t Ethernet Switch, kernel JUNOS 21.4R3-S5.4, Build date: 2023-06-01 10:00:00 UTC Copyright (c) 1996-2023 Juniper Networks, Inc."}'
 
-# 2) سطر syslog يفتح حادثة (نفس رمز /api/events)
+# 2) A syslog line opens an incident (same token as /api/events)
 curl -s -X POST localhost:8000/api/syslog -H 'content-type: application/json' -H 'x-rootiq-token: change-me-ingest' \
   -d '{"device":"r1","lines":["%LINK-3-UPDOWN: Interface GigabitEthernet0/0, changed state to down"]}'
 
-# 3) الـCopilot: كيف يُحفظ الإعداد على أكثر من مصنّع؟
+# 3) Ask the Copilot how several vendors save a configuration
 curl -s -X POST localhost:8000/api/copilot/ask -H 'content-type: application/json' \
   -d '{"question":"How do I save the config on Junos vs Cisco vs Fortigate?"}'
 ```
 
-### ما لا يدّعيه المشروع (بصراحة)
-- القاعدة **ليست شاملة**: 5 مصنّعين بتغطية كاملة و7 جزئية و31 «تعريف فقط»؛ الموديلات بمستوى **العائلة/السلسلة** لا كل SKU.
-- الأوامر وأنماط syslog كُتبت من المعرفة العامة ولم تُلتقط من أجهزة حقيقية (لكل مصنّع علامة ثقة؛ **Fortinet الأضعف**). RootIQ يعرضها للمهندس ولا يدفعها لأي جهاز.
-- التدريب على GPU (Colab) لم يُشغَّل هنا؛ أما توليد البيانات والمقيّم وخلايا الدفتر التي بلا GPU فمُختبرة.
+---
 
 ## كيف تشغّل المشروع / How to run
 
@@ -106,11 +153,11 @@ Full Mermaid + 30s verbal: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
 ## Multi-agent layer
 
-16 specialised agents (telemetry/logs → detection → correlation/topology → RCA → explanation/knowledge/**vendor** → remediation → guardrail → **human** → execution → verification → learning) plus a read-only bilingual **Copilot** with a local **RAG** index. Fourteen agents are fully deterministic; the LLM (Claude / Gemini / Groq) is optional and can only reword text with numbers grounded in measurements.
+**16 agents**, plus a read-only bilingual **Copilot** with a local **RAG** index. Nothing runs without a named engineer's approval. The LLM (Claude / Gemini / Groq) is optional and can only reword text with numbers grounded in measurements.
 
 - Per-agent benefit, needs, guardrails and failure behaviour: [`docs/AGENTS.md`](docs/AGENTS.md)
 - Big picture, spec compliance matrix, gaps, roadmap: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md)
-- **Vendor-aware:** a knowledge base of 43 network vendors (identity from `sysDescr`/`sysObjectID`, per-vendor read-only diagnostics, syslog formats, 25 problem patterns) feeds the `vendor` and `logs` agents: [`docs/VENDORS.md`](docs/VENDORS.md). Training data generated from it: [`training/`](training/README.md).
+- Vendor knowledge base (identity from `sysDescr`/`sysObjectID`, per-vendor read-only diagnostics, syslog formats, 25 problem patterns): [`docs/VENDORS.md`](docs/VENDORS.md)
 - UI: **Agents** page (roster, live trace, Copilot) · API: `GET /api/agents`, `POST /api/copilot/ask`
 - One command (Windows): `powershell -ExecutionPolicy Bypass -File .\scripts\run-demo.ps1` starts the backend + UI in simulation mode and opens the Agents page. Optional LLM: `$env:GROQ_API_KEY='...'` then add `-Llm groq` (the key is read from the environment and never stored). Stop with `-Stop`.
 
@@ -172,7 +219,7 @@ Index: [`docs/README.md`](docs/README.md) · Full plan: `RootIQ_Daily_Plan.md` �
 
 | Read this | For |
 |---|---|
-| [`docs/AGENTS.md`](docs/AGENTS.md) | The 16 agents: benefit, needs, guardrails, failure behaviour, API, tests; what was added / modified for multi-vendor support (§4b) |
+| [`docs/AGENTS.md`](docs/AGENTS.md) | The 16 agents: benefit, needs, guardrails, failure behaviour, API, tests; what was added or modified for multi-vendor support (§4b) |
 | [`docs/VENDORS.md`](docs/VENDORS.md) | Vendor knowledge base: coverage table, config model per vendor (§3b), how to add a vendor, honest limits |
 | [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) | Big picture, spec compliance, gaps, roadmap |
 | [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) · [`training/README.md`](training/README.md) | What to train and why, the generated dataset, the evaluator, Hugging Face catalog, the Colab notebook |
