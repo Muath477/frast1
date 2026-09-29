@@ -318,7 +318,7 @@ flowchart LR
 - **المهمة:** تحويل أسطر syslog الخام إلى أحداث موحّدة عبر أنماط المصنّعين في قاعدة المعرفة، وإدخال أحداث حالة الرابط في الـpipeline.
 - **المدخلات:** `POST /api/syslog` `{device, vendor?, lines[≤200]}` (نفس رمز الإدخال `X-RootIQ-Token` ونفس حد المعدل كـ`/api/events`).
 - **المخرجات:** لكل سطر `{parsed, vendor, event, interface, state, link, pushed, alsoMatches}` + حدث `syslog_link_down` (1 = سقط، 0 = عاد) على **الرابط** المقابل للمنفذ.
-- **كيف يعمل:** تنظيف السطر (حذف رموز التحكم، ≤ 1000 حرف) ← تلميح المصنّع من الطوبولوجيا (أو من الطلب) ← `parse_syslog` (أنماط 7 مصنّعين: Cisco IOS/NX-OS، Junos، Arista، Huawei VRP، MikroTik، Extreme، Linux) ← توحيد اسم المنفذ (`GigabitEthernet0/0` = `Gi0/0`) ← `port_to_link` ← `pipeline.ingest`. الأحداث غير الخاصة بالمنافذ (OSPF/BGP/STP…) تُوحَّد وتُخزَّن ولا تفتح حادثة بمفردها.
+- **كيف يعمل:** تنظيف السطر (حذف رموز التحكم، ≤ 1000 حرف) ← تلميح المصنّع من الطوبولوجيا (أو من الطلب) ← `parse_syslog` (أنماط 9 مصنّعين: Cisco IOS/NX-OS، Junos، Arista، Huawei VRP، MikroTik، Extreme، Linux، FortiOS (سجلات الأحداث)، وArubaOS-Switch (`port X is now off-line`)) ← توحيد اسم المنفذ (`GigabitEthernet0/0` = `Gi0/0`) ← `port_to_link` ← `pipeline.ingest`. الأحداث غير الخاصة بالمنافذ (OSPF/BGP/STP، وتغيير الإعداد `config_change` مثل `%SYS-5-CONFIG_I` عند Cisco/Arista و`UI_COMMIT` عند Junos) تُوحَّد وتُخزَّن ولا تفتح حادثة بمفردها.
 - **الصيغ المشتركة:** بعض الصيغ تخص أكثر من مصنّع (مثل `%LINEPROTO-5-UPDOWN` عند Cisco وArista)؛ يُفضَّل تلميح الجهاز في الطوبولوجيا، وإلا يُختار الأكثر شيوعًا مع إرجاع `alsoMatches`.
 - **الضوابط:** ما لا يُعرف يُعدّ `unparsed` ولا يُخمَّن؛ منفذ غير موجود في الطوبولوجيا لا يُرسل للـpipeline؛ لا يفتح حادثة إلا «سقوط» على رابط معروف.
 - **يحتاج:** أن تُضبط الأجهزة لإرسال syslog إلى المجمّع/الـAPI (المجمّع الحالي لا يشغّل مستمع UDP 514 بعد — انظر §10).
@@ -330,6 +330,7 @@ flowchart LR
 - **المدخلات:** سبب جذري + المقاييس الشاذة في الحادثة + هوية الأجهزة من الطوبولوجيا.
 - **المخرجات:** `incident.vendorContext = {rootEntity, kind, devices[], problems[{id,title,causes,diagnose[],fixes[],verify}], known}`.
 - **كيف يعمل:** `devices_for(root)` (رابط ← طرفاه مع المنفذ؛ خدمة ← مضيفها؛ جهاز ← نفسه) ← `identify` لكل جهاز ← `problems_for(metrics, kind)` (مقاييس + نوع السبب، ويُستبعد ما لا ينطبق: خادم لا يُخبَر بحلقة L2) ← `checks_for` / `fix_commands` لكل جهاز.
+- **نموذج الإعداد وأسلوب الأوامر (جديد):** لكل جهاز يُرجع `vendorContext.devices[].configModel` = كيف يُطبَّق التغيير ويُحفظ ويُتراجَع عنه (`running-startup` / `candidate-commit` / `auto-save`) مع أوامر الدخول والحفظ ونقطة الاسترجاع والتغيير الآمن (`commit confirmed`، `reload in 5`، `commit timer`) وأسلوب كتابة الأوامر — لأن أبرز اختلاف بين Cisco وJuniper وFortinet وAruba وArista هو هنا. مرجعي للمهندس ولا يُنفَّذ. تفاصيل الخمسة في [`VENDORS.md`](VENDORS.md) §3b.
 - **التغطية بصراحة:** `full` (5: Cisco، Juniper، Arista، Huawei، HPE/Aruba)، `partial` (7)، `profile-only` (31 — تعريف فقط بلا أوامر). كل مصنّع له `confidence`. الموديلات على مستوى **العائلة/السلسلة** (103 عائلة) لا كل SKU. انظر `docs/VENDORS.md`.
 - **الضوابط:** أوامر القراءة تمر بقائمة سماح أفعال وقائمة منع أفعال (عند التحقق من البيانات وعند حكم الـGuardrail)؛ أوامر التغيير مسموحة فقط لـ`clear_counters` و`bounce_interface` وتحتاج موافقة؛ اسم المنفذ يُتحقق منه بنمط آمن؛ مصنّع غير معروف يُذكر «غير معروف» ولا يُخمَّن.
 - **API:** `GET /api/vendors` · `/api/vendors/{id}` · `/api/vendors/inventory` · `POST /api/vendors/identify` · `GET /api/problems` · `/api/problems/{id}?vendor=&os=&interface=`.
@@ -429,6 +430,7 @@ npx tsc --noEmit; npx vitest run src
 | `test_agents.py` | اكتمال الـ16 وكيلًا وثيقتهم، المخطط، مفاتيح التعطيل، الأثر |
 | `test_knowledge_base.py` | سلامة بيانات المصنّعين (validate)، التعرّف من sysDescr/sysObjectID، الإصدارات، الأوامر (قراءة فقط)، Syslog، المشاكل EN/AR، ورفض البيانات الفاسدة |
 | `test_vendor_agents.py` | `vendor` و`logs` والخطة والـGuardrail والـRAG والـCopilot وطبقة الـAPI |
+| `test_multivendor.py` | المصنّعون ذوو الأولوية على طوبولوجيا مختلطة: الهوية، الأوامر بصيغة كل مصنّع، نموذج الإعداد، سطور syslog لكل مصنّع على الرابط الصحيح، وأسئلة الحفظ/الفرق للـCopilot |
 | `test_guardrail.py` | كل السياسات والمراحل (بارامتري) |
 | `test_agent_flow.py` | التدفق الكامل، رفض الوكلاء، الرفض ثم الموافقة، Dry run، التحقق، التقرير، التعلّم، المهلة، التعطيل، القياسات، الطوبولوجيا |
 | `test_copilot.py` | النوايا EN/AR، القراءة فقط، حدود LLM، حقن، «لم أجد» |

@@ -37,7 +37,7 @@ Train with `messages` only (chat template of the base model); `task`, `group`, `
 ## Tasks
 
 `identify`, `syslog`, `command_lookup`, `command_translate`, `problem_diagnose`, `incident_vendor_plan`, `vendor_profile`,
-`version_parse`, `safety_refusal` (counts: see `manifest.json`). External rows, when enabled in the notebook, carry `task` =
+`version_parse`, `config_model`, `safety_refusal` (counts: see `manifest.json`). External rows, when enabled in the notebook, carry `task` =
 `ext_mikrotik_qa` / `ext_syslog_artifact`, are `train`-only and never appear in the committed files.
 
 ## Provenance and licence

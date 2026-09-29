@@ -125,6 +125,21 @@ export interface VendorFix {
   commands: { device: string; capability: string; commands: string[] }[];
 }
 
+/** How a change is applied, saved and rolled back on a device's OS (reference text; RootIQ never runs it). */
+export interface ConfigModel {
+  style: 'running-startup' | 'candidate-commit' | 'auto-save';
+  summary: string;
+  summaryAr: string;
+  enter: string[];
+  save: string[];
+  snapshot: string[];
+  safeChange: string[];
+  rollback: string[];
+  notes?: string | null;
+  cliStyle?: string | null;
+  cliStyleAr?: string | null;
+}
+
 export interface VendorDevice {
   id: string;
   label: string;
@@ -136,6 +151,7 @@ export interface VendorDevice {
   osName: string | null;
   version?: string | null;
   confidence: string;
+  configModel?: ConfigModel | null;
 }
 
 /** Reference commands per device vendor. Shown to the engineer; RootIQ never executes them. */

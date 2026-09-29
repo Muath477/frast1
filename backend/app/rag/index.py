@@ -115,7 +115,7 @@ METRIC_NAMES = {
 }
 
 # down-weight very large, narrative sources so focused docs win ties
-KIND_WEIGHT = {"plan": 0.6, "lab-config": 0.9, "vendor": 0.9, "vendor-cmd": 0.9, "problem": 0.9}
+KIND_WEIGHT = {"plan": 0.6, "lab-config": 0.9, "vendor": 0.9, "vendor-cmd": 0.9, "problem": 0.9, "threshold": 1.2}  # short exact facts win ties against long narrative docs
 
 
 # ---------------------------------------------------------------- model

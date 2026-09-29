@@ -11,7 +11,9 @@
     "aoscx",
     "instant on",
     "اروبا",
-    "أروبا"
+    "أروبا",
+    "arubaos-cx",
+    "aruba cx"
   ],
   "categories": [
     "switching",
@@ -53,7 +55,29 @@
         "version": [
           "FL.10.09.1020"
         ]
-      }
+      },
+      "config_model": {
+        "style": "running-startup",
+        "summary": "Changes take effect immediately in the running configuration. They are lost at reload unless they are copied to the startup configuration (NVRAM).",
+        "summary_ar": "التغييرات تسري فورًا على الإعداد الجاري (running) وتضيع عند إعادة التشغيل ما لم تُنسخ إلى إعداد الإقلاع (startup / NVRAM).",
+        "enter": [
+          "configure terminal"
+        ],
+        "save": [
+          "write memory",
+          "copy running-config startup-config"
+        ],
+        "snapshot": [
+          "checkpoint <name>"
+        ],
+        "safe_change": [],
+        "rollback": [
+          "checkpoint rollback <name>"
+        ],
+        "notes": "Checkpoints are the rollback mechanism; verify the exact checkpoint syntax on your AOS-CX release."
+      },
+      "cli_style": "Cisco-like CLI. Interfaces are member/slot/port (`1/1/1`). `show running-config`, checkpoints for rollback, REST API and NAE built in. Enable a port with `no shutdown`.",
+      "cli_style_ar": "واجهة شبيهة بـCisco. أسماء الواجهات member/slot/port (`1/1/1`). `show running-config` ونقاط استرجاع (checkpoints) وREST API وNAE مدمج. فعّل المنفذ بـ`no shutdown`."
     },
     {
       "id": "arubaos-switch",
@@ -79,7 +103,24 @@
           "YA.16.10.0003",
           "WC.16.11.0004"
         ]
-      }
+      },
+      "config_model": {
+        "style": "running-startup",
+        "summary": "Changes take effect immediately in the running configuration. They are lost at reload unless they are copied to the startup configuration (NVRAM).",
+        "summary_ar": "التغييرات تسري فورًا على الإعداد الجاري (running) وتضيع عند إعادة التشغيل ما لم تُنسخ إلى إعداد الإقلاع (startup / NVRAM).",
+        "enter": [
+          "configure"
+        ],
+        "save": [
+          "write memory"
+        ],
+        "snapshot": [],
+        "safe_change": [],
+        "rollback": [],
+        "notes": "No automatic rollback: to undo an unsaved change, reload without saving."
+      },
+      "cli_style": "HP ProCurve heritage: `show interfaces brief`, ports named like `A1` or `1`, `disable` / `enable` instead of shutdown / no shutdown, `write memory` to persist; a menu interface also exists.",
+      "cli_style_ar": "إرث HP ProCurve: `show interfaces brief` والمنافذ باسم مثل `A1` أو `1`، و`disable` / `enable` بدل shutdown / no shutdown، و`write memory` للحفظ؛ وتوجد أيضًا واجهة قوائم."
     }
   ],
   "series": [
@@ -315,7 +356,19 @@
       }
     }
   },
-  "syslog": [],
+  "syslog": [
+    {
+      "id": "port-online",
+      "regex": "\\bports?:?\\s+port\\s+(?P<interface>[A-Za-z]?\\d+(?:/\\d+)*)\\s+is now\\s+(?P<state>on-line|off-line)",
+      "state_map": {
+        "on-line": "up",
+        "off-line": "down"
+      },
+      "event": "interface_state",
+      "severity": "warning",
+      "example": "I 09/29/26 10:02:11 00077 ports: port 1 is now off-line"
+    }
+  ],
   "advisories": {
     "eol": {
       "url": "https://support.hpe.com/",

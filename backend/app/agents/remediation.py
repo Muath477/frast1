@@ -29,7 +29,7 @@ class RemediationAgent(Agent):
             "title": top["title"],
             "titleAr": top["titleAr"],
             "devices": [
-                {k: d[k] for k in ("id", "label", "role", "interface", "vendor", "vendorName", "os", "osName", "confidence")}
+                {k: d[k] for k in ("id", "label", "role", "interface", "vendor", "vendorName", "os", "osName", "confidence", "configModel")}
                 for d in ctx["devices"]
             ],
             "diagnose": top["diagnose"],

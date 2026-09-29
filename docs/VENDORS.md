@@ -12,20 +12,20 @@
 | `data/problems.json` | 25 نمط مشكلة: الأعراض والكلمات المفتاحية (EN/AR)، الأسباب، **فحوصات** (بأسماء قدرات)، **إصلاحات** (كلها تحتاج موافقة، مع التراجع)، معايير تحقق بمقاييس RootIQ، ونطاق الانطباق (`applies_to`) |
 | `data/capabilities.json` | 26 «قدرة» موحّدة (عرض الإصدار، حالة المنافذ، أخطاء CRC، البصريات، VLAN، STP، MAC، الجيران، CPU، الذاكرة، البيئة، OSPF/BGP، LAG، PoE، QoS…) — هي ما يربط المشكلة بأمر كل مصنّع |
 
-الأرقام المولَّدة من الكود: 228 مدخل أمر، 21 نمط syslog (7 مصنّعين: Cisco IOS/NX-OS وJunos وArista وHuawei وMikroTik وExtreme وLinux).
+الأرقام المولَّدة من الكود: 246 مدخل أمر، 26 نمط syslog لـ9 مصنّعين (Arista Networks، Cisco Systems، Extreme Networks، Fortinet، HPE Aruba Networking، Huawei، Juniper Networks، Linux servers، MikroTik).
 
 ## 2. جدول التغطية (مولَّد من القاعدة)
 
 | المعرّف | المصنّع | التغطية | الثقة | أنظمة التشغيل | عائلات الأجهزة | قدرات لها أوامر | أنماط syslog |
 |---|---|---|---|---|---|---|---|
-| `arista` | Arista Networks | full | high | eos | 6 | 23 | 2 |
-| `cisco` | Cisco Systems | full | high | ios-xe, ios, nx-os, ios-xr | 12 | 25 | 11 |
-| `hpe-aruba` | HPE Aruba Networking (Aruba + HP ProCurve) | full | medium | aos-cx, arubaos-switch | 7 | 20 | 0 |
+| `arista` | Arista Networks | full | high | eos | 6 | 23 | 3 |
+| `cisco` | Cisco Systems | full | high | ios-xe, ios, nx-os, ios-xr | 12 | 25 | 12 |
+| `hpe-aruba` | HPE Aruba Networking (Aruba + HP ProCurve) | full | medium | aos-cx, arubaos-switch | 7 | 20 | 1 |
 | `huawei` | Huawei | full | medium | vrp | 6 | 20 | 2 |
-| `juniper` | Juniper Networks | full | high | junos | 9 | 24 | 3 |
+| `juniper` | Juniper Networks | full | high | junos | 9 | 24 | 4 |
 | `dell` | Dell Technologies (Dell EMC Networking / PowerSwitch) | partial | medium | os10, dnos6, os9 | 4 | 15 | 0 |
 | `extreme` | Extreme Networks | partial | medium | exos, voss | 6 | 18 | 1 |
-| `fortinet` | Fortinet | partial | low | fortiswitchos, fortios | 3 | 7 | 0 |
+| `fortinet` | Fortinet | partial | low | fortiswitchos, fortios | 3 | 16 | 1 |
 | `h3c` | H3C / HPE FlexNetwork (Comware) | partial | medium | comware | 3 | 0 | 0 |
 | `linux` | Linux servers (Ubuntu / Debian / RHEL family) | partial | medium | linux | 0 | 13 | 1 |
 | `mikrotik` | MikroTik | partial | medium | routeros, swos | 3 | 22 | 1 |
@@ -89,6 +89,31 @@ flowchart LR
 4. **الـCopilot:** «ما أمر فحص أخطاء CRC على Juniper؟» ← جواب حرفي من القاعدة (لا يعاد صياغته بالـLLM) مع «RootIQ لا ينفّذها».
 5. **الـRAG:** ملف لكل مصنّع وجدول أوامر لكل نظام وملف لكل مشكلة (بوزن 0.9 كي لا تطغى على وثائق المشروع).
 6. **التدريب:** `training/build_dataset.py` يحوّلها إلى بيانات (انظر [`../training/README.md`](../training/README.md)).
+
+## 3b. الأجهزة ذات الأولوية: Cisco وJuniper وFortinet وAruba وArista
+
+ملاحظة من مهندسي الميدان: هذه أغلب المصنّعين غير Cisco، والمعمل الافتراضي (EVE-NG) أجهزته Cisco. **الفرق الحقيقي بينها غالبًا في أمرين:** صيغة كتابة الأوامر، وطريقة حفظ الإعداد (NVRAM / commit). لذلك أضافت القاعدة لكل نظام تشغيل من هذه الخمسة:
+
+* **نموذج الإعداد `config_model`:** هل التغيير يسري فورًا ويحتاج حفظًا (`running-startup`: Cisco وArista وAruba)، أم يمر بإعداد مرشّح ويحتاج `commit` (`candidate-commit`: Junos وIOS-XR)، أم يُطبَّق ويُحفظ تلقائيًا (`auto-save`: FortiOS)؟ مع أوامر الدخول والحفظ ونقطة الاسترجاع والتغيير الآمن والتراجع.
+* **أسلوب الأوامر `cli_style`** (EN/AR): أوضاع الـCLI، الاختصارات، الفلاتر، أسماء الواجهات (`Gi0/1` مقابل `ge-0/0/1` مقابل `1/1/1` مقابل `port1`).
+
+| النظام | النمط | الدخول | الحفظ / التفعيل | تغيير أكثر أمانًا | التراجع |
+|---|---|---|---|---|---|
+| Cisco Systems — Cisco IOS XE | running-startup | `configure terminal` | `copy running-config startup-config` ; `write memory` | `reload in 5` ; `reload cancel` | `configure replace flash:<backup> force` |
+| Cisco Systems — Cisco IOS (classic) | running-startup | `configure terminal` | `copy running-config startup-config` ; `write memory` | `reload in 5` ; `reload cancel` | `configure replace flash:<backup> force` |
+| Cisco Systems — Cisco NX-OS | running-startup | `configure terminal` | `copy running-config startup-config` | — | `rollback running-config checkpoint <name>` |
+| Cisco Systems — Cisco IOS XR | candidate-commit | `configure terminal` | `commit` | `commit confirmed 5` | `rollback configuration last 1` |
+| Juniper Networks — Junos OS | candidate-commit | `configure` | `commit` | `commit confirmed 5` | `rollback 1` ; `commit` |
+| Fortinet — FortiSwitchOS | auto-save | `config <path>` | — | — | `execute restore config tftp <file> <server>` |
+| Fortinet — FortiOS (FortiGate firewalls) | auto-save | `config <path>` | — | — | `execute restore config tftp <file> <server>` |
+| HPE Aruba Networking — ArubaOS-CX | running-startup | `configure terminal` | `write memory` ; `copy running-config startup-config` | — | `checkpoint rollback <name>` |
+| HPE Aruba Networking — ArubaOS-Switch (ProVision / ProCurve) | running-startup | `configure` | `write memory` | — | — |
+| Arista Networks — Arista EOS | running-startup | `configure terminal` | `write memory` ; `copy running-config startup-config` | `configure session <name>` ; `commit timer 00:05:00` | `configure replace flash:<backup>` |
+
+* يظهر هذا في **لوحة الحادثة** («Applying a change») وفي `plan.vendorCommands.devices[].configModel`، ويجيب عنه الـCopilot («كيف أحفظ الإعداد على Juniper وArista؟» — حتى 4 مصنّعين جنبًا إلى جنب).
+* **مصنّعو المعمل المختلط:** `configs/topology.multivendor.example.json` مثال جاهز فيه Cisco IOS وJuniper vQFX وArista vEOS وFortiGate-VM وAruba AOS-CX بحقول `sysDescr`/`vendor`؛ انسخه فوق `configs/topology.json` (أو `TOPOLOGY_PATH`) وعدّل الأسماء والمنافذ. صور EVE-NG الشائعة لهذه المصنّعين موجودة عادةً (تحقق من قائمة الصور والتراخيص عندك).
+* أسماء الصور الافتراضية معروفة للقاعدة (`vQFX`, `vMX`, `vSRX`, `vEOS`, `cEOS`, `FortiGate-VM`, `AOS-CX`).
+* **أضعفها ثقةً: Fortinet** (ثقة `low`): أوامر FortiOS وFortiSwitchOS كُتبت من المعرفة العامة. التقط مخرجات FortiGate-VM (`get system status`، سطور syslog) وأضفها لأمثلة `fortinet.json` لرفع الثقة. وAruba: أنماط syslog لـArubaOS-Switch فقط (صيغة `port X is now off-line`)؛ صيغة AOS-CX غير مضافة بعد.
 
 ## 4. الأمان
 

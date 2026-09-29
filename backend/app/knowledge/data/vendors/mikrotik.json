@@ -46,7 +46,25 @@
           "7.11.2",
           "6.49.10"
         ]
-      }
+      },
+      "config_model": {
+        "style": "auto-save",
+        "summary": "Changes apply immediately and are stored automatically: there is no save step. Use a backup or export before risky changes.",
+        "summary_ar": "التغييرات تسري فورًا وتُخزَّن تلقائيًا: لا توجد خطوة حفظ. استخدم نسخة احتياطية أو export قبل أي تغيير محفوف بالمخاطر.",
+        "enter": [],
+        "save": [],
+        "snapshot": [
+          "/system backup save name=<name>",
+          "/export file=<name>"
+        ],
+        "safe_change": [],
+        "rollback": [
+          "/system backup load name=<name>"
+        ],
+        "notes": "Safe Mode (Ctrl+X in the terminal) reverts every change made in the session if the connection drops."
+      },
+      "cli_style": "Slash-separated menu paths (`/interface ethernet print`); verbs `print`, `set`, `add`, `remove`; `?` and Tab for help; interfaces `ether1`, `sfp-sfpplus1`.",
+      "cli_style_ar": "مسارات قوائم مفصولة بـ`/` (`/interface ethernet print`)؛ أفعال `print` و`set` و`add` و`remove`؛ `?` وTab للمساعدة؛ الواجهات `ether1` و`sfp-sfpplus1`."
     },
     {
       "id": "swos",

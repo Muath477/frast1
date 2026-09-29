@@ -53,6 +53,24 @@
         "version": [
           "5.4.0"
         ]
+      },
+      "config_model": {
+        "style": "candidate-commit",
+        "summary": "NVUE stages changes as a pending revision: `nv config apply` makes them active and `nv config save` makes them persistent across reboots.",
+        "summary_ar": "NVUE يجمّع التغييرات في نسخة معلّقة: `nv config apply` يفعّلها و`nv config save` يجعلها دائمة بعد إعادة التشغيل.",
+        "enter": [],
+        "save": [
+          "nv config apply",
+          "nv config save"
+        ],
+        "snapshot": [],
+        "safe_change": [
+          "nv config apply --confirm 5m"
+        ],
+        "rollback": [
+          "nv config history"
+        ],
+        "notes": "`nv config diff` shows the pending changes. Applies to Cumulus Linux 5.x with NVUE (the older ifupdown2/NCLU flow differs)."
       }
     },
     {
