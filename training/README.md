@@ -6,7 +6,8 @@
 training/
 ├── README.md                     ← هذا الملف
 ├── RootIQ_Training.ipynb         ← دفتر Colab (المراحل A–F)
-├── COLAB_AGENT_PROMPT.md         ← برومبت «Claude in Chrome» ليشغّل الدفتر ويراقبه
+├── COLAB_AGENT_PROMPT.md         ← البرومبت 2: «Claude in Chrome» أمامه Colab وGoogle Drive وGitHub (قراءة فقط) ويشغّل الدفتر ويراقبه
+├── VSCODE_AGENT_PROMPT.md        ← البرومبت 1: وكيل داخل VS Code يدرّب محليًا (A وB على CPU، وC–E إن وُجد كرت NVIDIA)
 ├── build_dataset.py              ← يبني البيانات من backend/app/knowledge/data (حتمي، بلا إنترنت)
 ├── kb_eval.py                    ← المقيّم: يحسب الدقة بلا GPU (مغطّى باختبارات)
 ├── external.py                   ← تحويل مجموعات Hugging Face «المسموحة» إلى نفس الصيغة
@@ -68,6 +69,8 @@ python training/build_dataset.py            # يعيد التوليد إلى dat
 python training/build_dataset.py --check    # يفشل (exit 1) إن كانت الملفات قديمة
 python training/catalog/refresh_catalog.py  # يحدّث الكتالوج من Hugging Face (يحتاج إنترنت)
 ```
+
+**برومبتان جاهزان للوكلاء:** [`VSCODE_AGENT_PROMPT.md`](VSCODE_AGENT_PROMPT.md) للتدريب المحلي داخل VS Code، و[`COLAB_AGENT_PROMPT.md`](COLAB_AGENT_PROMPT.md) للتدريب على Colab بإشراف Claude in Chrome (يفتح Colab وDrive وGitHub، ويقرأ الأخيرين فقط). كلاهما يبدأ بفحص ثم ينتظر «go»، ويمنع أي دفع إلى GitHub أو اقتراب من مستودع الأصل.
 
 في Colab: الدفتر يستنسخ المستودع ويشغّل نفس السكربت ويقرأ `data/generated/` (المرحلة **B0**)، ويقيّم قبل/بعد التدريب بـ`kb_eval.py` (المراحل **C1/D1**).
 

@@ -3,6 +3,11 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Agent prompts (VS Code and Colab + Drive + GitHub)
+- `training/VSCODE_AGENT_PROMPT.md` (prompt 1): a coding agent inside VS Code trains locally: preflight of the machine, repo integrity, Stages A and B on the CPU, Stages C-E only when CUDA works with at least 8 GB of VRAM. It never commits or pushes, never touches `origin`, and works on a copy of the notebook.
+- `training/COLAB_AGENT_PROMPT.md` (prompt 2): Claude in Chrome with three tabs (Colab, Google Drive read-only, GitHub read-only on the fork). It checks that the commit printed by the notebook equals the newest commit on GitHub and that the files the notebook reports are really on Drive.
+- Notebook cell 3: clones branch `main` of the fork, prints the commit hash, and never runs `git pull` on a local checkout.
+
 ## Documentation refresh
 - `README.md`: "What's new" table, 2-minute vendor demo (curl), explicit limits, tests and docs map; a note on switching the GitHub branch selector to `my-edits`.
 - `CHANGELOG.md` (this file), `docs/README.md` index, `docs/DEMO_SCRIPT.md` (optional vendor segment), `docs/QA_BANK.md` (vendor questions).
