@@ -66,10 +66,11 @@ Full Mermaid + 30s verbal: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
 ## Multi-agent layer
 
-14 specialised agents (telemetry → detection → correlation/topology → RCA → explanation/knowledge → remediation → guardrail → **human** → execution → verification → learning) plus a read-only bilingual **Copilot** with a local **RAG** index. Twelve agents are fully deterministic; the LLM (Claude / Gemini / Groq) is optional and can only reword text with numbers grounded in measurements.
+16 specialised agents (telemetry/logs → detection → correlation/topology → RCA → explanation/knowledge/**vendor** → remediation → guardrail → **human** → execution → verification → learning) plus a read-only bilingual **Copilot** with a local **RAG** index. Fourteen agents are fully deterministic; the LLM (Claude / Gemini / Groq) is optional and can only reword text with numbers grounded in measurements.
 
 - Per-agent benefit, needs, guardrails and failure behaviour: [`docs/AGENTS.md`](docs/AGENTS.md)
 - Big picture, spec compliance matrix, gaps, roadmap: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md)
+- **Vendor-aware:** a knowledge base of 43 network vendors (identity from `sysDescr`/`sysObjectID`, per-vendor read-only diagnostics, syslog formats, 25 problem patterns) feeds the `vendor` and `logs` agents: [`docs/VENDORS.md`](docs/VENDORS.md). Training data generated from it: [`training/`](training/README.md).
 - UI: **Agents** page (roster, live trace, Copilot) · API: `GET /api/agents`, `POST /api/copilot/ask`
 - One command (Windows): `powershell -ExecutionPolicy Bypass -File .\scripts\run-demo.ps1` starts the backend + UI in simulation mode and opens the Agents page. Optional LLM: `$env:GROQ_API_KEY='...'` then add `-Llm groq` (the key is read from the environment and never stored). Stop with `-Stop`.
 

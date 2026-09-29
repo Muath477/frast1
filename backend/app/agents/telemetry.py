@@ -19,6 +19,7 @@ METRIC_UNIT = {
     "http_latency_ms": "ms",
     "if_out_discards_rate": "pps",
     "http_ok": "bool",
+    "syslog_link_down": "bool",
 }
 UNIT_ALIASES = {
     "percent": {"percent", "%", "pct"},

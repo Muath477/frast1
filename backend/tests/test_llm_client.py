@@ -131,3 +131,34 @@ async def test_rate_limit_starts_a_cooldown_and_skips_calls_until_it_ends(monkey
     monkeypatch.setattr(client, "_cooldown_until", 0.0)  # cooldown over
     assert await client.complete("s", "u") is None
     assert len(calls) == 2
+
+
+def test_custom_provider_needs_an_address_not_a_key(monkeypatch):
+    monkeypatch.setattr(settings, "llm_enabled", True)
+    monkeypatch.setattr(settings, "llm_provider", "custom")
+    monkeypatch.setattr(settings, "llm_base_url", "")
+    assert client.enabled() is False
+    monkeypatch.setattr(settings, "llm_base_url", "http://localhost:11434/v1")
+    assert client.enabled() is True
+    assert "localhost" not in str(client.info())  # the address is never exposed by the status endpoint
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("key,expect_auth", [("", False), ("secret-token", True)])
+async def test_custom_provider_uses_the_openai_compatible_shape(monkeypatch, key, expect_auth):
+    monkeypatch.setattr(settings, "llm_enabled", True)
+    monkeypatch.setattr(settings, "llm_provider", "custom")
+    monkeypatch.setattr(settings, "llm_base_url", "http://localhost:11434/v1/")
+    monkeypatch.setattr(settings, "llm_model", "rootiq-network-v1")
+    monkeypatch.setattr(settings, "custom_llm_api_key", key)
+    seen = {}
+
+    async def fake_post(url, headers, payload, timeout):
+        seen.update(url=url, headers=headers, payload=payload)
+        return {"choices": [{"message": {"content": "hello from my model"}}]}
+
+    monkeypatch.setattr(client, "_post", fake_post)
+    assert await client.complete("SYS", "USER") == "hello from my model"
+    assert seen["url"] == "http://localhost:11434/v1/chat/completions"
+    assert seen["payload"]["model"] == "rootiq-network-v1" and seen["payload"]["messages"][0]["content"] == "SYS"
+    assert ("authorization" in seen["headers"]) is expect_auth

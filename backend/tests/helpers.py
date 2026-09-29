@@ -43,6 +43,7 @@ def build_stack(tmp_path, mode: str = "sim") -> SimpleNamespace:
     agents.bind(state=state)
     pipeline = Pipeline(topo, state, detector, incidents)
     pipeline.agents = agents
+    agents.bind(pipeline=pipeline)
     sim = Simulator(pipeline)
     holder["sim"] = sim
     return SimpleNamespace(

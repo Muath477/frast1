@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from app.agents.runtime import AgentRuntime
-from app.api import actions, agents as agents_api, demo, events, health, incidents, topology, ws
+from app.api import actions, agents as agents_api, demo, events, health, incidents, topology, vendors, ws
 from app.collectors.simulator import Simulator
 from app.core.config import settings
 from app.intelligence.correlate import Correlator
@@ -155,6 +155,7 @@ async def lifespan(app: FastAPI):
             st.acknowledged_at = blob.get("acknowledgedAt")
             st.verification = blob.get("verification")
             st.knowledge = blob.get("knowledge")
+            st.vendor_context = blob.get("vendorContext")
             if st.status != "resolved":
                 incidents_svc.open[st.id] = st
             else:
@@ -180,6 +181,7 @@ async def lifespan(app: FastAPI):
     pipeline = Pipeline(topo, state, detector, incidents_svc)
     pipeline.recorder = Recorder()
     pipeline.agents = agents
+    agents.bind(pipeline=pipeline)
 
     app.state.topology = topo
     app.state.state = state
@@ -231,4 +233,5 @@ app.include_router(demo.router, prefix="/api")
 app.include_router(incidents.router, prefix="/api")
 app.include_router(actions.router, prefix="/api")
 app.include_router(agents_api.router, prefix="/api")
+app.include_router(vendors.router, prefix="/api")
 app.include_router(ws.router)

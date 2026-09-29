@@ -115,14 +115,14 @@ METRIC_NAMES = {
 }
 
 # down-weight very large, narrative sources so focused docs win ties
-KIND_WEIGHT = {"plan": 0.6, "lab-config": 0.9}
+KIND_WEIGHT = {"plan": 0.6, "lab-config": 0.9, "vendor": 0.9, "vendor-cmd": 0.9, "problem": 0.9}
 
 
 # ---------------------------------------------------------------- model
 @dataclass
 class Chunk:
     id: str
-    kind: str  # doc | plan | topology | threshold | playbook | lab-config | incident | postmortem
+    kind: str  # doc | plan | topology | threshold | playbook | lab-config | vendor | vendor-cmd | problem | incident | postmortem
     source: str
     title: str
     text: str
@@ -285,6 +285,7 @@ class KnowledgeIndex:
         self._add_thresholds()
         for pb in (playbooks or {}).values():
             self._add_playbook(pb)
+        self._add_vendor_kb()
         self._dirty = True
 
     def _add_md(self, path: Path, kind: str):
@@ -345,6 +346,40 @@ class KnowledgeIndex:
             + "; ".join(pb["preconditions"])
             + f"\nSteps:\n{steps}\nRollback:\n{rb}",
         )
+
+    def _add_vendor_kb(self):
+        """Vendor profiles, per-OS command tables and the problem catalogue (app/knowledge/data)."""
+        from app.knowledge import get_kb
+
+        kb = get_kb()
+        for v in kb.vendors.values():
+            oses = "; ".join(f"{o['name']} ({o.get('version_scheme', '')[:120]})" for o in v["os_families"])
+            series = "; ".join(f"{s['name']} [{s.get('role', '')}]" for s in v["series"])
+            pens = ", ".join(str(e["pen"]) for e in v["enterprise_oids"])
+            self.add_text(
+                f"vendor:{v['id']}", "vendor", f"knowledge/vendors/{v['id']}", f"Vendor {v['name']}",
+                f"{v['name']} ({', '.join(v['categories'])}). Aliases: {', '.join(v['aliases'])}. Operating systems: {oses or 'n/a'}. "
+                f"Device families: {series or 'n/a'}. IANA enterprise number(s): {pens or 'n/a'}. "
+                f"Coverage {v['coverage']}, confidence {v['confidence']}.",
+            )
+            for os_id, table in v.get("commands", {}).items():
+                rows = "\n".join(
+                    f"{cap}: " + " | ".join(entry.get("read") or entry.get("change") or []) for cap, entry in table.items()
+                )
+                if rows:
+                    scope = "default commands" if os_id == "default" else f"{os_id} commands"
+                    self.add_text(
+                        f"vendor:{v['id']}:cmd:{os_id}", "vendor-cmd", f"knowledge/vendors/{v['id']}", f"{v['name']} {scope}",
+                        f"{v['name']} CLI {scope} (read-only inspection unless marked change):\n{rows}",
+                    )
+        for p in kb.problems.values():
+            checks = "; ".join(f"{c['capability']} ({c['why']})" for c in p["checks"])
+            fixes = "; ".join(f"{f['title']} [risk {f['risk']}, needs approval]" for f in p["fixes"])
+            self.add_text(
+                f"problem:{p['id']}", "problem", "knowledge/problems.json", f"Problem: {p['title']}",
+                f"{p['title']} ({p['category']}, severity {p['severity']}). {p['summary']} Common causes: {'; '.join(p['causes'])}. "
+                f"Checks: {checks}. Fixes: {fixes}. Arabic: {p['title_ar']} — {p['summary_ar']}",
+            )
 
     def upsert_incident(self, inc: dict):
         rc = inc.get("rootCause") or {}

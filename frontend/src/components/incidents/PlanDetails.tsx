@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import clsx from 'clsx';
 import type { ActionPlan } from '@/lib/types';
+import { VendorCommandsView } from './VendorCommands';
 
 const KIND_STYLE: Record<string, string> = {
   read: 'bg-slate-500/20 text-slate-300',
@@ -56,6 +57,7 @@ export function PlanDetails({ plan, warnings }: { plan: ActionPlan; warnings?: s
             <span className="text-slate-500">Success when: </span>
             {plan.verification.map((c) => `${c.metric} ${c.op} ${c.value}`).join(' · ')}
           </p>
+          {plan.vendorCommands && <VendorCommandsView vc={plan.vendorCommands} />}
           {[...plan.riskFactors, ...(warnings ?? [])].map((w) => (
             <p key={w} className="text-warn">
               ⚠ {w}

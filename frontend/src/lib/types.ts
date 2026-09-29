@@ -99,6 +99,77 @@ export interface PlaybookStep {
   command?: string;
 }
 
+export interface VendorCheck {
+  capability: string;
+  why: string;
+  commands: string[];
+  available: boolean;
+}
+
+export interface VendorDiagnose {
+  device: string;
+  vendor: string | null;
+  os: string | null;
+  interface: string | null;
+  coverage?: string;
+  note?: string;
+  checks: VendorCheck[];
+}
+
+export interface VendorFix {
+  id: string;
+  title: string;
+  risk: string;
+  rollback: string;
+  needsApproval: boolean;
+  commands: { device: string; capability: string; commands: string[] }[];
+}
+
+export interface VendorDevice {
+  id: string;
+  label: string;
+  role: string | null;
+  interface: string | null;
+  vendor: string | null;
+  vendorName: string | null;
+  os: string | null;
+  osName: string | null;
+  version?: string | null;
+  confidence: string;
+}
+
+/** Reference commands per device vendor. Shown to the engineer; RootIQ never executes them. */
+export interface VendorCommands {
+  problem: string;
+  title: string;
+  titleAr: string;
+  devices: VendorDevice[];
+  diagnose: VendorDiagnose[];
+  fixes: VendorFix[];
+  executable: false;
+  note: string;
+}
+
+export interface VendorProblem {
+  id: string;
+  title: string;
+  titleAr: string;
+  severity: string;
+  summary: string;
+  summaryAr: string;
+  causes: string[];
+  diagnose: VendorDiagnose[];
+  fixes: VendorFix[];
+}
+
+export interface VendorContext {
+  rootEntity: string;
+  kind: string;
+  devices: VendorDevice[];
+  problems: VendorProblem[];
+  known: number;
+}
+
 export interface ActionPlan {
   playbookId: string;
   title: string;
@@ -112,6 +183,7 @@ export interface ActionPlan {
   labImplementation: string;
   requiresApproval: boolean;
   autoExecutable: boolean;
+  vendorCommands?: VendorCommands;
 }
 
 export interface Verification {
@@ -170,6 +242,7 @@ export interface Incident {
   acknowledgedAt?: string | null;
   verification?: Verification | null;
   knowledge?: { similar: KnowledgeHit[]; references: KnowledgeHit[] } | null;
+  vendorContext?: VendorContext | null;
   timings: {
     injectedAt?: string;
     firstAnomalyAt?: string;
@@ -258,6 +331,7 @@ export interface AgentsResponse {
     llm: { enabled: boolean; provider: string; model: string; requested: boolean };
     telemetry: { eventsSeen: number; sources: number; stale: string[]; qualityScore: number };
     knowledge: { chunks: number; loaded?: boolean };
+    vendors?: { vendors: number; problems: number; coverage: { full: number; partial: number; 'profile-only': number } };
     traceSteps: number;
   };
 }

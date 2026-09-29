@@ -76,7 +76,7 @@ export function AgentsPage() {
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-wide">{t('agents.title')}</h1>
-          <p className="text-xs text-slate-400">{t('agents.subtitle', { n: data?.agents.length ?? 14 })}</p>
+          <p className="text-xs text-slate-400">{t('agents.subtitle', { n: data?.agents.length ?? 16 })}</p>
         </div>
         {h && (
           <div className="flex flex-wrap gap-2 text-[11px]">
@@ -86,6 +86,11 @@ export function AgentsPage() {
             <span className="rounded border border-noc-line px-2 py-1 text-slate-400">
               {t('agents.kb', { n: h.knowledge.chunks })}
             </span>
+            {h.vendors && (
+              <span className="rounded border border-noc-line px-2 py-1 text-slate-400">
+                {t('agents.vendors', { n: h.vendors.vendors, full: h.vendors.coverage.full })}
+              </span>
+            )}
             <span className="rounded border border-noc-line px-2 py-1 text-slate-400">
               {t('agents.dataQuality', { pct: Math.round(h.telemetry.qualityScore * 100) })}
             </span>

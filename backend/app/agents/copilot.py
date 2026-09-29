@@ -17,6 +17,7 @@ from .base import Agent
 from .roster import SPECS
 
 TOOLS = (
+    "vendor_help",
     "get_incident",
     "list_incidents",
     "topology_summary",
@@ -74,6 +75,28 @@ REFUSAL_RE = re.compile(
 def detect_lang(text: str) -> str:
     ar = len(re.findall(r"[؀-ۿ]", text))
     return "ar" if ar and ar >= len(re.findall(r"[A-Za-z]", text)) / 2 else "en"
+
+
+VENDOR_CUES = [normalize(k) for k in (
+    "command", "commands", "cli", "syntax", "how to check", "how do i check", "how can i check", "which command",
+    "how do i show", "how to show", "how do i see", "how can i see", "how do i view", "how to view", "what shows",
+    "أمر", "أوامر", "امر", "اوامر", "كيف افحص", "كيف أفحص", "كيف اتحقق", "كيف أتحقق",
+)]
+VENDOR_OVERVIEW = [normalize(k) for k in (
+    "which vendors", "what vendors", "supported vendors", "vendors do you", "vendors are supported", "list vendors",
+    "أي مصنع", "اي مصنع", "المصنعين", "المصنّعين", "الشركات المصنعة", "الشركات المصنّعة", "ما الشركات",
+)]
+
+
+def vendor_intent(question: str, kb) -> str | None:
+    """'overview' | 'help' | None. A vendor name alone is not enough: the question must ask for commands/checks."""
+    q = normalize(question)
+    if any(k in q for k in VENDOR_OVERVIEW):
+        return "overview"
+    vid, _ = kb.find_vendor(question)
+    if vid is None:
+        return None
+    return "help" if (any(k in q for k in VENDOR_CUES) or kb.find_problem(question)) else None
 
 
 def classify(question: str) -> str:
@@ -264,6 +287,9 @@ class CopilotAgent(Agent):
         lang = lang if lang in ("ar", "en") else detect_lang(question)
         ar = lang == "ar"
         intent = classify(question)
+        vintent = vendor_intent(question, self.rt.vendor.kb) if intent != "action_request" else None
+        if vintent:
+            intent = "vendor_help"
         entity = self.resolve_entity(question)
         inc = self._incident(incident_id)
         sources: list[dict] = []
@@ -286,6 +312,14 @@ class CopilotAgent(Agent):
                     "I am read-only: I cannot approve, reject or execute anything. Use the Approve / Reject buttons in the incident panel — ask me to explain the recommendation and its risks first if you like."
                 )
                 confidence = "n/a"
+            elif intent == "vendor_help":
+                r = self.rt.vendor.answer_help(question, ar, overview=vintent == "overview")
+                if r is None:
+                    text = ("لم أجد مصنّعًا أو مشكلة معروفة في سؤالك." if ar else "I could not find a known vendor or problem in your question.")
+                    confidence = "n/a"
+                else:
+                    text, facts = r
+                sources.append({"source": "knowledge/vendors + knowledge/problems.json", "title": "vendor knowledge base"})
             elif intent == "impact" and inc is None and entity:
                 text, facts = self._entity_impact(entity, ar)
                 sources.append({"source": "configs/topology.json", "title": "topology graph"})
@@ -353,13 +387,14 @@ class CopilotAgent(Agent):
                 sources = [{"source": h["source"], "title": h["title"], "score": h["score"]} for h in safe[:3]]
             elif not sources and intent != "action_request":
                 sources = [{"source": h["source"], "title": h["title"], "score": h["score"]} for h in strong[:2]]
-            if inc is not None and intent not in ("docs", "action_request"):
+            if inc is not None and intent not in ("docs", "action_request", "vendor_help"):
                 sources.insert(0, {"source": f"incident/{inc['id']}", "title": "live incident state"})
 
             answer_source = "deterministic"
             # Fixed messages (refusals, "no incident", "not found") are never sent to the LLM.
             llm_text = None
-            if intent != "action_request" and confidence not in ("n/a", "none"):
+            # Vendor commands must stay verbatim, so they are never reworded by the LLM either.
+            if intent not in ("action_request", "vendor_help") and confidence not in ("n/a", "none"):
                 context_hits = safe if intent == "docs" else [h for h in safe if h["score"] >= 0.3]
                 llm_text = await self._llm_answer(question, ar, intent, text, facts, context_hits, sources)
             if llm_text:

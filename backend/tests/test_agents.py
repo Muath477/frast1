@@ -8,8 +8,8 @@ from app.agents.runtime import AgentRuntime
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 
 
-def test_roster_has_fourteen_unique_agents_with_complete_specs():
-    assert len(ORDER) == 14 == len(set(ORDER))
+def test_roster_has_sixteen_unique_agents_with_complete_specs():
+    assert len(ORDER) == 16 == len(set(ORDER))
     for aid in ORDER:
         s = SPECS[aid]
         assert s.id == aid

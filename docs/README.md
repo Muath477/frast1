@@ -5,7 +5,10 @@
 | [`CONTRACTS.md`](CONTRACTS.md) | Frozen API / event contracts |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Mermaid + 30s verbal |
 | [`BLUEPRINT.md`](BLUEPRINT.md) | المخطط الشامل: الصورة الكبيرة، المراحل، خلف الكواليس، مطابقة المواصفة، الفجوات، خارطة الطريق |
-| [`AGENTS.md`](AGENTS.md) | الوكلاء الـ14: فائدة كل وكيل، ما يحتاجه، ضوابطه، التدهور الآمن، الـAPI، الاختبارات |
+| [`AI_TRAINING.md`](AI_TRAINING.md) | ماذا ندرّب (Isolation Forest، LLM بـQLoRA)، البيانات الفعلية، الربط بالمنتج، قرار الشحن، وقيود الجهاز |
+| [`AGENTS.md`](AGENTS.md) | الوكلاء الـ16: فائدة كل وكيل، ما يحتاجه، ضوابطه، التدهور الآمن، الـAPI، الاختبارات (وماذا أُضيف/عُدّل لدعم المصنّعين §4b) |
+| [`VENDORS.md`](VENDORS.md) | قاعدة معرفة المصنّعين: ماذا تغطي وبأي ثقة، الهوية والأوامر وSyslog والمشاكل، كيف تضيف مصنّعًا، وحدودها |
+| [`../training/README.md`](../training/README.md) | مجلد التدريب: بيانات مولَّدة من القاعدة، المقيّم، كتالوج Hugging Face، دفتر Colab |
 | [`RESULTS.md`](RESULTS.md) | Measured pitch numbers |
 | [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) | 5-minute demo (Appendix أ) |
 | [`QA_BANK.md`](QA_BANK.md) | Judge Q&A (Appendix ب) |
