@@ -3,6 +3,10 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Old-vs-new safeguards for Colab and Drive
+- C2 refuses to train on a `train.jsonl` left on Drive by an old run (it must contain vendor-knowledge rows and `kb_test_seen.jsonl` must exist), and the checkpoint folder name ends with a hash of the training data.
+- The Colab operator prompt says to open the notebook only from GitHub and to stop on any copy that does not print `commit: <hash>` in cell 3.
+
 ## Notebook fixes found in review (before the first GPU run)
 - C2: the SMOKE run and the full run no longer share a checkpoint folder (the full run would have resumed from the 20-step smoke checkpoint with a finished learning-rate schedule); the adapter and the merged model carry the same `-smoke` suffix.
 - C2: `per_device_eval_batch_size=2` (the default of 8 with a 152k-token vocabulary can exhaust a T4) and `padding_side = "right"` for training (batched decoding in C1 sets it to left).

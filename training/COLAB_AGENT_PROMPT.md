@@ -104,8 +104,8 @@ Run in this order and check the expected output before moving on:
   E1                 DO NOT RUN in the smoke phase (it writes ~8 GB to Drive).
 After D1: refresh the DRIVE tab and check, read-only, that these exist with non-zero sizes: data/train.jsonl, val.jsonl, eval_grounded.jsonl,
 kb_test_seen.jsonl, kb_test_unseen.jsonl, models/iforest.joblib, reports/anomaly_report.json, reports/eval_before.json, reports/eval_report.json,
-checkpoints/rootiq-network-v1-smoke/ and models/rootiq-network-v1-smoke-lora/ (the SMOKE run uses the suffix -smoke; the full run uses
-rootiq-network-v1 without it, so the two never share checkpoints). Open reports/eval_report.json in Drive's preview and confirm that its "decision" and the numbers
+checkpoints/rootiq-network-v1-smoke-<8 hex chars>/ and models/rootiq-network-v1-smoke-lora/ (the SMOKE run uses the suffix -smoke and the folder name ends with
+a hash of train.jsonl, so a checkpoint is only resumed with the data it was trained on; the full run uses rootiq-network-v1 without the suffix). Open reports/eval_report.json in Drive's preview and confirm that its "decision" and the numbers
 match what cell D1 printed; report any mismatch.
 Then send me the PHASE 1 REPORT (format below) and STOP. Wait for my decision to start the full run.
 
@@ -126,7 +126,10 @@ PHASE 3 — RESULT AND EXPORT
   - D1 gives DECISION. Send the FINAL REPORT. If DO NOT SHIP: explain which condition failed and STOP (no export).
   - Run E1 (merge + save the ~8 GB model to Drive) only if the decision is SHIP AND I say "export". Then use the DRIVE tab to list the files created
     in MyDrive/RootIQ_AI/models/merged with sizes, and open rootiq_model_card.json to confirm it lists the same decision.
-  - Do not upload anything to GitHub and do not create or edit files there: results stay on Drive. If I want them in the repository I will ask separately.
+  - Do not upload anything to GitHub and do not create or edit files there: results stay on Drive.
+  - Old copies of the notebook: open the notebook ONLY from the GitHub link above (File > Open notebook > GitHub > Muath477/frast1 > main >
+    training/RootIQ_Training.ipynb). If the Colab tab shows a notebook whose cell 3 does not print "commit: <hash>", or that has fewer than 24 cells,
+    it is an old copy: STOP and tell me. If you save a copy to Drive, name it RootIQ_Training_<date>.ipynb. If I want them in the repository I will ask separately.
 
 ALLOWED EDITS (everything else needs my approval)
   - The SMOKE value in cell 1 (True/False), after I confirm.
