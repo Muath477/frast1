@@ -55,6 +55,8 @@ jobs:
         run: python training/build_dataset.py --check
       - name: docs/VENDORS.md matches the knowledge base
         run: python scripts/gen_vendors_doc.py --check
+      - name: Wiring audit (live API, doc numbers, notebook, GitHub files, frontend types)
+        run: python scripts/audit_wiring.py
 
   frontend:
     name: Frontend (type-check, unit tests, build)

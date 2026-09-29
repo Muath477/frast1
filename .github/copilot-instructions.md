@@ -23,6 +23,7 @@ cd backend && ROOTIQ_MODE=sim python -m pytest -q          # 264 tests must pass
 cd frontend && npx tsc --noEmit && npx vitest run src && npm run build
 python training/build_dataset.py --check                    # if it fails: python training/build_dataset.py and commit the result
 python scripts/gen_vendors_doc.py --check                   # if it fails: python scripts/gen_vendors_doc.py and commit the result
+python scripts/audit_wiring.py                              # docs, counts, notebook and frontend agree with the code; it says which number to update
 ```
 
 ## Conventions

@@ -209,7 +209,7 @@ Shift+1 uplink · Shift+2 DNS · Shift+3 server spike · Shift+R reset · Shift+
 
 | What | Where | Does |
 |---|---|---|
-| CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | On every push to `main` / `my-edits` and every pull request: backend tests, frontend type-check + tests + build, and checks that the knowledge base, the generated training data and `docs/VENDORS.md` are in sync |
+| CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | On every push to `main` / `my-edits` and every pull request: backend tests, frontend type-check + tests + build, and checks that the knowledge base, the generated training data and `docs/VENDORS.md` are in sync, plus a wiring audit ([`scripts/audit_wiring.py`](scripts/audit_wiring.py)) |
 | Copilot agent environment | [`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) | Installs Python and Node dependencies so the Copilot coding agent (the **Agents** tab) can run the tests |
 | Copilot instructions | [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | Repository rules for any Copilot agent: human approval only, read-only vendor commands, no invented vendor facts, no secrets, pull requests to this fork only |
 | Custom agents | [`.github/agents/`](.github/agents) | `vendor-kb` (maintains the vendor knowledge base) and `docs-keeper` (keeps README, CHANGELOG and docs consistent) |
@@ -223,6 +223,7 @@ $env:ROOTIQ_MODE = 'sim'
 .\.venv\Scripts\python.exe -m pytest -q                        # 264 tests
 cd ..\frontend; npx tsc --noEmit; npx vitest run src           # type-check + unit tests
 cd ..; python training\build_dataset.py --check                # committed training data matches the knowledge base
+python scripts\audit_wiring.py                                 # runs the API on the multi-vendor topology; docs, counts, notebook and frontend agree with the code
 ```
 
 ## Docs
