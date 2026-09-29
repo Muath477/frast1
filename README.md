@@ -58,7 +58,7 @@ Per-agent details: [`docs/AGENTS.md`](docs/AGENTS.md).
 - The knowledge base is **not exhaustive**: 5 vendors with full coverage, 7 partial, 31 identification-only. Devices are known by **family/series**, not by every SKU.
 - Commands and syslog patterns were written from general knowledge, not captured from real devices. Every vendor carries a confidence level; **Fortinet is the weakest**.
 - RootIQ shows vendor commands to the engineer and never pushes them to a device.
-- GPU training (Colab) has not been run; dataset generation, the evaluator and the notebook's CPU cells are tested.
+- Training: the notebook ran end to end on Colab once in SMOKE mode (20 training steps: data, QLoRA, evaluation, merge and export to Drive); that only proves the pipeline works. The full run (`SMOKE = False`) has not been done, so there is no real accuracy result yet. First smoke numbers and the problems met on Colab: [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) §8–§9.
 
 <div dir="rtl">
 

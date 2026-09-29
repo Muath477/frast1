@@ -3,6 +3,10 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Docs: what happened in the first Colab runs
+- `docs/AI_TRAINING.md` §8 lists the problems met on Colab with cause, fix in the repository and what to do (C2 `warmup_ratio`, E1 `torchao`, E1 `offload_dir`, rerunning E1, the background upload of the ~8 GB file to Drive, Drive unmounted after `flush_and_unmount()`, a stale `/content/frast1`, bf16 on a T4); §9 has the first real smoke numbers read from Drive, with the caveat that they only prove the pipeline. §7 and the README now say the notebook ran once on Colab in SMOKE mode and that the full run has not been done.
+- `training/COLAB_AGENT_PROMPT.md` and `training/VSCODE_AGENT_PROMPT.md`: the error playbooks carry the same cases; the Colab operator may run `pip uninstall -y torchao` when peft reports an incompatible torchao.
+
 ## Fix: cell 3 makes a stale Colab copy of the code visible and repairs it
 - On a rerun inside Colab, cell 3 ran `git pull` with its output hidden and its failure ignored, so a Colab session could keep an old copy of the repository without saying so (the new `model_eval.py` and cells F1/F2 were "not found"). It now prints the failure and resets the Colab-only clone to the newest `main` of the fork (`git fetch` + `git reset --hard FETCH_HEAD`); a local checkout is still never touched.
 
