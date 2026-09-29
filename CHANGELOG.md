@@ -3,6 +3,9 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Prompt 4: dataset scout (`training/DATASET_SCOUT_PROMPT.md`)
+- A read-only Claude in Chrome prompt that searches Hugging Face and Kaggle for datasets covering every vendor (not only Cisco) and every training task, reads each licence exactly, applies the catalog's strict licence rule (open licences only for training; unclear or derived-from-vendor-documentation sets are rejected or evaluation-only), and returns a JSON list. It downloads nothing, signs in nowhere and writes to none of the user's files; the accepted sets are then verified through the Hugging Face API and added to `training/catalog/` and `training/external.py` by Claude Code.
+
 ## Docs: what happened in the first Colab runs
 - `docs/AI_TRAINING.md` §8 lists the problems met on Colab with cause, fix in the repository and what to do (C2 `warmup_ratio`, E1 `torchao`, E1 `offload_dir`, rerunning E1, the background upload of the ~8 GB file to Drive, Drive unmounted after `flush_and_unmount()`, a stale `/content/frast1`, bf16 on a T4); §9 has the first real smoke numbers read from Drive, with the caveat that they only prove the pipeline. §7 and the README now say the notebook ran once on Colab in SMOKE mode and that the full run has not been done.
 - `training/COLAB_AGENT_PROMPT.md` and `training/VSCODE_AGENT_PROMPT.md`: the error playbooks carry the same cases; the Colab operator may run `pip uninstall -y torchao` when peft reports an incompatible torchao.
