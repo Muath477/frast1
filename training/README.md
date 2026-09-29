@@ -91,6 +91,8 @@ python training/catalog/refresh_catalog.py  # يحدّث الكتالوج من H
 
 راجع [`catalog/CATALOG.md`](catalog/CATALOG.md). القاعدة: **مجموعة بلا رخصة معلنة، أو مشتقة من وثائق مصنّع، لا تُستخدم في تدريب نموذج تشحنه.** لذلك يقبل `external.py` مجموعتين فقط الآن (`zilalzihar/mikrotik-routeros-qa-dataset` وهي Apache-2.0، و`witfoo/syslog-to-artifact` وهي Apache-2.0)؛ وتُحوَّل إلى نفس الصيغة وتُفحص (أسرار، طول، تكرار، نصائح مدمّرة) وتدخل **التدريب فقط** — لا تدخل مجموعات الاختبار كي تبقى الأرقام قابلة للمقارنة بين التجارب. تفعيلها من متغيّر `INCLUDE_EXTERNAL` في الدفتر.
 
+**مصدر إضافي من GitHub (جديد):** مخرجات أجهزة **حقيقية** لـ13 منصة (Cisco IOS/NX-OS/IOS-XR وJunos وArista وAruba وHP ProCurve وHuawei VRP وFortiOS وMikroTik وExtreme وPalo Alto وDell) من مستودع [`networktocode/ntc-templates`](https://github.com/networktocode/ntc-templates) برخصة **Apache-2.0**: لكل أمر `show`/`display`/`get` مخرجه الخام الملتقط والحقول التي يستخرجها المحلِّل منه. يحمّله [`ntc_source.py`](ntc_source.py) (يتحقق من ملف LICENSE، ويقبل أوامر القراءة فقط، ويحجب الأسرار، ويحدّ الحجم: 383 صفًا بالحدود الافتراضية) كمهمة `ext_cli_parse` **للتدريب فقط**، وتُفعَّل مع `INCLUDE_EXTERNAL = True`. وما بحثتُ عنه في Hugging Face وKaggle ولم أستخدمه، مع الأسباب: [`catalog/OTHER_SOURCES.md`](catalog/OTHER_SOURCES.md). الخلاصة الصريحة: لا توجد على Hugging Face مجموعات نظيفة الرخصة لـArista وAruba وHuawei وDell وExtreme وPalo Alto وVyOS، ومعظم ما وُجد لـJuniper وFortinet بلا رخصة أو مشتق من الوثائق.
+
 ## 6. حدود يجب أن تعرفها
 
 * **هذه البيانات تعلّم النموذج «القاعدة» وصيغ الإخراج، لا تجعله خبيرًا في كل الأجهزة.** المصدر الموثوق يبقى ملفات JSON عبر وكيل `vendor`؛ والنموذج المضبوط مساعد للصياغة والتلخيص، وكل أمر يقترحه يمر عبر سياسة `vendor_commands_read_only` في الـGuardrail قبل أن يصل لأحد.

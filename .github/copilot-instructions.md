@@ -19,7 +19,7 @@ and a training folder (`training/`). Start with `README.md`, then `docs/AGENTS.m
 
 ## Commands (run these before you finish)
 ```bash
-cd backend && ROOTIQ_MODE=sim python -m pytest -q          # 275 tests must pass
+cd backend && ROOTIQ_MODE=sim python -m pytest -q          # 282 tests must pass
 cd frontend && npx tsc --noEmit && npx vitest run src && npm run build
 python training/build_dataset.py --check                    # if it fails: python training/build_dataset.py and commit the result
 python scripts/gen_vendors_doc.py --check                   # if it fails: python scripts/gen_vendors_doc.py and commit the result
