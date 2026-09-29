@@ -95,6 +95,9 @@ ERROR PLAYBOOK
   - CUDA out of memory             -> the allowed batch-size / max_length edits, then rerun the failed cell from a fresh kernel.
   - Groq HTTP 429                  -> do nothing, the cell waits and retries; if it seems stuck for more than 15 minutes, tell me.
   - Groq HTTP 404 model not found  -> tell me; do not guess a replacement model.
+  - E1 "incompatible version of torchao" -> the cell stops with the exact command (pip uninstall torchao, or pip install -U torchao) because it never changes a local environment by itself: show me the message and wait.
+  - SFTConfig unexpected keyword (warmup_ratio, max_seq_length ...) -> the current C2 picks the names by itself and stops naming the one it does not know: show me that message.
+  - "No module named model_eval" -> cell 3 was not run in this kernel (it puts training/ on sys.path): run cells 1 and 3 first.
   - Anything else                  -> stop and show me the last 30 lines of the error.
 
 REPORT FORMAT (Arabic, short)

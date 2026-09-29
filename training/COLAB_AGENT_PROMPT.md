@@ -148,6 +148,7 @@ ALLOWED EDITS (everything else needs my approval)
   - Lowering per_device_train_batch_size (and raising gradient_accumulation_steps to keep the product 16) or max_length
     (1024 -> 768 -> 512) if the GPU runs out of memory. Log the values.
   - Re-running cells, restarting the runtime, reconnecting.
+  - pip uninstall -y torchao, only when peft reports an incompatible torchao (the notebook does not use it).
 
 ERROR PLAYBOOK
   - "No module named X" after install/restart -> rerun cell 2 then 1 and 3.
@@ -161,6 +162,17 @@ ERROR PLAYBOOK
   - TypeError about an unexpected keyword in SFTConfig / SFTTrainer -> the allowed keyword rename.
   - bitsandbytes / CUDA errors -> report the full message; do not try alternative installs beyond rerunning cell 2.
   - Drive errors (quota, not mounted) -> stop and tell me.
+  Problems that really happened in the first Colab runs (each is already fixed in the current notebook; if you see one, the Colab tab has an OLD copy):
+  - C2 "SFTConfig.__init__() got an unexpected keyword argument 'warmup_ratio'" (then a second error about 'max_seq_length') -> old C2. Rerun cell 3
+    (it refreshes the code) and use the current notebook; do not chase the second error.
+  - E1 "ImportError: Found an incompatible version of torchao" -> the current E1 removes the old torchao itself. On an old copy: pip uninstall -y torchao, then rerun E1 (allowed).
+  - E1 "ValueError: We need an offload_dir to dispatch this model" -> old E1 loading on the GPU while training still holds its memory. The current E1 merges on the CPU.
+  - E1 "AssertionError: no adapter at ... run C2 first" right after drive.flush_and_unmount() -> Drive is unmounted, not lost. Tell me; I run cell 1 and click Allow myself.
+  - model.safetensors (~8 GB) is not in the DRIVE tab right after E1 -> Colab uploads in the background (it took about 15 minutes for the smoke run;
+    8,044,982,080 bytes). Keep the runtime connected and recheck. Do NOT run drive.flush_and_unmount() without asking me: it unmounts Drive and the permission dialog comes back.
+  - "No module named 'model_eval'" or StopIteration when loading cell F2 -> the folder /content/frast1 is an old copy. Rerun cell 3 (it prints a failed pull and resets the copy)
+    and check that it prints the newest commit.
+  - A T4 has no bf16: C1 and F2 choose fp16 by themselves; do not force bf16 there.
   - Anything else -> stop and show me the last 30 lines of the error.
 
 REPORT FORMAT (Arabic; short)
