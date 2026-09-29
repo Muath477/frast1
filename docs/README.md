@@ -7,6 +7,7 @@
 | [`BLUEPRINT.md`](BLUEPRINT.md) | المخطط الشامل: الصورة الكبيرة، المراحل، خلف الكواليس، مطابقة المواصفة، الفجوات، خارطة الطريق |
 | [`AI_TRAINING.md`](AI_TRAINING.md) | ماذا ندرّب (Isolation Forest، LLM بـQLoRA)، البيانات الفعلية، الربط بالمنتج، قرار الشحن، وقيود الجهاز |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | ما تغيّر في الفرع `my-edits` commit بعد commit، وماذا اختُبر وما لم يُختبر |
+| [`../.github/`](../.github) | أتمتة GitHub: CI (اختبارات + اتساق القاعدة والبيانات والتوثيق)، وبيئة وكيل Copilot، وتعليمات المستودع، ووكيلان مخصّصان (`vendor-kb`, `docs-keeper`)، وقالب الـPR |
 | [`AGENTS.md`](AGENTS.md) | الوكلاء الـ16: فائدة كل وكيل، ما يحتاجه، ضوابطه، التدهور الآمن، الـAPI، الاختبارات (وماذا أُضيف/عُدّل لدعم المصنّعين §4b) |
 | [`VENDORS.md`](VENDORS.md) | قاعدة معرفة المصنّعين: ماذا تغطي وبأي ثقة، الهوية والأوامر وSyslog والمشاكل، كيف تضيف مصنّعًا، وحدودها |
 | [`../configs/topology.multivendor.example.json`](../configs/topology.multivendor.example.json) | مثال طوبولوجيا متعددة المصنّعين (Cisco + Juniper + Arista + Fortinet + Aruba) |

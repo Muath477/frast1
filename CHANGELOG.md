@@ -3,6 +3,11 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## GitHub automation (CI, Copilot agent setup, custom agents)
+- `.github/workflows/ci.yml`: backend pytest, frontend type-check + vitest + build, and a consistency job (knowledge base validates, generated training data and `docs/VENDORS.md` match the knowledge base).
+- `.github/workflows/copilot-setup-steps.yml`, `.github/copilot-instructions.md`, `.github/agents/{vendor-kb,docs-keeper}.agent.md`: environment, rules and two custom agents for the Copilot coding agent (the Agents tab).
+- `.github/pull_request_template.md`; `scripts/gen_vendors_doc.py` (generator of `docs/VENDORS.md`, with `--check`); a CI badge in the README.
+
 ## Agent prompts (VS Code and Colab + Drive + GitHub)
 - `training/VSCODE_AGENT_PROMPT.md` (prompt 1): a coding agent inside VS Code trains locally: preflight of the machine, repo integrity, Stages A and B on the CPU, Stages C-E only when CUDA works with at least 8 GB of VRAM. It never commits or pushes, never touches `origin`, and works on a copy of the notebook.
 - `training/COLAB_AGENT_PROMPT.md` (prompt 2): Claude in Chrome with three tabs (Colab, Google Drive read-only, GitHub read-only on the fork). It checks that the commit printed by the notebook equals the newest commit on GitHub and that the files the notebook reports are really on Drive.
