@@ -3,6 +3,9 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Fix: cell 3 makes a stale Colab copy of the code visible and repairs it
+- On a rerun inside Colab, cell 3 ran `git pull` with its output hidden and its failure ignored, so a Colab session could keep an old copy of the repository without saying so (the new `model_eval.py` and cells F1/F2 were "not found"). It now prints the failure and resets the Colab-only clone to the newest `main` of the fork (`git fetch` + `git reset --hard FETCH_HEAD`); a local checkout is still never touched.
+
 ## Stage F: the accuracy of every run in one table, and a test for any saved model
 - New `training/model_eval.py` (CPU, no key). Cell D1 now appends its measurements to `reports/history.jsonl` on Drive (untrained model, trained model, Groq teacher), so a new training run no longer overwrites the numbers of the previous one.
 - New notebook cell **F1**: prints one table with a row per run (CCNA, grounding, identify / syslog / command / diagnose / config / refusal accuracy, invented and unsafe commands, decision) and the anomaly model of stage A. It also picks up a run that was made before the history file existed, from `reports/eval_report.json`. No GPU and no key; works after a runtime restart (run cells 1 and 3 first).
