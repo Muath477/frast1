@@ -134,7 +134,9 @@ PHASE 3 — RESULT AND EXPORT
 ALLOWED EDITS (everything else needs my approval)
   - The SMOKE value in cell 1 (True/False), after I confirm.
   - Renaming a keyword argument in C2 that the installed TRL / transformers version rejects
-    (examples: max_length <-> max_seq_length, processing_class <-> tokenizer, eval_strategy <-> evaluation_strategy).
+    (examples: max_length <-> max_seq_length, processing_class <-> tokenizer, eval_strategy <-> evaluation_strategy,
+    warmup_steps (an integer) in place of a removed warmup_ratio). C2 already picks these names itself; if it stops with
+    "do not know these SFTConfig arguments", rename or remove ONLY the argument it names, then tell me.
   - Lowering batch_size in generate_batch (8 -> 4 -> 2) if the vendor-knowledge evaluation runs out of memory.
   - Lowering per_device_train_batch_size (and raising gradient_accumulation_steps to keep the product 16) or max_length
     (1024 -> 768 -> 512) if the GPU runs out of memory. Log the values.

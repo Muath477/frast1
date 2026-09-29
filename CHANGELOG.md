@@ -3,6 +3,11 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Fix: cell C2 on the newest TRL / transformers (found in the first real Colab run)
+- Colab installs the newest `transformers` / `trl`, which no longer accept `warmup_ratio`. C2 now passes `warmup_steps` (3% of the planned steps, as a whole number that old and new versions accept).
+- The blind `max_length` / `max_seq_length` retry hid that error behind a second one. C2 now looks at the fields of the installed `SFTConfig` and picks `max_length` vs `max_seq_length` and `eval_strategy` vs `evaluation_strategy`, picks `processing_class` vs `tokenizer` for `SFTTrainer` from its signature, and stops with a message that names any argument the installed version does not know.
+- Verified: 2 new tests run C2 against stand-ins for an older and a newer release (smoke and full); 264 backend tests pass. C1 to E1 on a real GPU are still verified only by the Colab run.
+
 ## Prompt 3: GitHub Agents tab check
 - `docs/GITHUB_AGENTS_PROMPT.md`: a read-only Claude in Chrome prompt that checks the workflows, the Agents tab, the two custom agents and the Copilot plan, and starts one test session only after `go test`.
 
