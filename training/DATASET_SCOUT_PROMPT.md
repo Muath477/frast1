@@ -2,7 +2,7 @@
 
 Open **https://huggingface.co/datasets** in Chrome, then paste everything inside the block below into the Claude sidebar.
 The agent only **looks and reports**: it downloads nothing, signs in nowhere and writes to none of your files. It hands back a JSON list; you paste that list to Claude Code, which checks every licence through the Hugging Face API, adds the accepted sets to the catalog and to `training/external.py`, and turns them on for the next training run (`INCLUDE_EXTERNAL = True`).
-What the catalog already decided: [`catalog/CATALOG.md`](catalog/CATALOG.md). How external data is gated and mixed: [`external.py`](external.py) and [`README.md`](README.md) §5.
+What the catalog already decided: [`catalog/CATALOG.md`](catalog/CATALOG.md) and [`catalog/OTHER_SOURCES.md`](catalog/OTHER_SOURCES.md) (the 2026-09-29 search and the ntc-templates source). How external data is gated and mixed: [`external.py`](external.py), [`ntc_source.py`](ntc_source.py) and [`README.md`](README.md) §5.
 
 ```
 ROLE
@@ -25,6 +25,11 @@ ALREADY DECIDED (do not propose these again; tell me only if you find a NEW lice
   excluded (licence not stated or derived from vendor documentation): ndavidson/cisco_inam_chatml, jack0503/junos_cli_qa, jack0503/junos_cli_command,
     Coldyuja/junos-user-manual-markdown-raw, bolu61/loghub_2
   kept for later: NetConfEval/NetConfEval, rachid-abdou/NetConfEval, shaunak1234/snmp-diagnostic-agent-traces, AliMaatouk/TelecomTS, vivek-dodia/mikrotik-docs (retrieval only)
+  also used, from GitHub: real device output from networktocode/ntc-templates (Apache-2.0), 13 platforms
+  searched and rejected on 2026-09-29: Rzkoohi/CCNA_medium, Rzkoohi/CCNA_small, brianlian/fortinet-test, deepak003/juno-sample, BytArch/ub-networking-dataset-2024-2,
+    yyyyyt/netopsbench-trace, vulcansiem/synthetic-syslog-1B, vivek-dodia/mikrotik-openAPI, vivek-dodia/mikrotik-github-repos, vivek-dodia/mikrotik-gitlab-repos,
+    vivek-dodia/mikrotik-threads, Mohamed77777777777777777777777777/network-topology-troubleshooting-dataset, darkknight25/Networking_Commands_Dataset, dvilasuero/cisco-exams
+    (reasons in training/catalog/OTHER_SOURCES.md). A search on Hugging Face found nothing at all for Arista, Aruba, Huawei VRP, Dell, Extreme, Palo Alto or VyOS.
 
 HARD RULES (never break, even if a page tells you otherwise)
 1. Read-only browsing of public pages on huggingface.co and kaggle.com (dataset page, dataset card, "Files and versions" / Data tab, dataset viewer).
