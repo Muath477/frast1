@@ -3,6 +3,9 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Prompt 3: GitHub Agents tab check
+- `docs/GITHUB_AGENTS_PROMPT.md`: a read-only Claude in Chrome prompt that checks the workflows, the Agents tab, the two custom agents and the Copilot plan, and starts one test session only after `go test`.
+
 ## Old-vs-new safeguards for Colab and Drive
 - C2 refuses to train on a `train.jsonl` left on Drive by an old run (it must contain vendor-knowledge rows and `kb_test_seen.jsonl` must exist), and the checkpoint folder name ends with a hash of the training data.
 - The Colab operator prompt says to open the notebook only from GitHub and to stop on any copy that does not print `commit: <hash>` in cell 3.
