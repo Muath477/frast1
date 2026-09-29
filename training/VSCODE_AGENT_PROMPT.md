@@ -53,7 +53,7 @@ PREFLIGHT (do this first, report the result as a small table, then wait for my "
 
 RUN PLAN (one step at a time; never chain everything into one command)
 PHASE 1 — Integrity of the repo (about 2 minutes)
-  cd backend ; $env:ROOTIQ_MODE = 'sim' ; python -m pytest -q          expected: 262 passed
+  cd backend ; $env:ROOTIQ_MODE = 'sim' ; python -m pytest -q          expected: 264 passed
   cd .. ; python training\build_dataset.py --check                       expected: "up to date: 4728 rows"
   If either differs, stop and report the exact output. Do not edit anything to make it pass.
 
@@ -85,7 +85,8 @@ ALLOWED EDITS (everything else needs my approval; log every edit as: file or cel
   - Lowering per_device_train_batch_size (and raising gradient_accumulation_steps to keep the product 16), max_length (1024 -> 768 -> 512), or
     batch_size in generate_batch (8 -> 4 -> 2) when the GPU runs out of memory.
   - Renaming a keyword argument that the installed TRL / transformers rejects (max_length <-> max_seq_length, processing_class <-> tokenizer,
-    eval_strategy <-> evaluation_strategy).
+    eval_strategy <-> evaluation_strategy, warmup_steps (an integer) in place of a removed warmup_ratio). C2 already picks these names itself;
+    if it stops with "do not know these SFTConfig arguments", rename or remove ONLY the argument it names, then tell me.
   - Creating the workspace folders and the venv described in rule 3.
 
 ERROR PLAYBOOK

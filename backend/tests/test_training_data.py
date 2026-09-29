@@ -305,3 +305,95 @@ def test_gpu_cells_at_least_compile_and_the_ship_rule_behaves(tmp_path):
     ignorant = make_ns(lambda msgs: "I am not sure.")
     exec(compile(_cell(cells, "#@title D1)"), "D1", "exec"), ignorant)
     assert ignorant["report"]["decision"] == "DO NOT SHIP" and ignorant["kb_rules"]["floors_met"] is False
+
+
+def _fake_trl(monkeypatch, *, new_api: bool):
+    """Stand-ins for datasets / peft / trl with the argument names of an older or a newer release."""
+    import dataclasses
+    import types
+
+    base = [("output_dir", str, ""), ("per_device_train_batch_size", int, 8), ("per_device_eval_batch_size", int, 8),
+            ("gradient_accumulation_steps", int, 1), ("learning_rate", float, 1e-4), ("lr_scheduler_type", str, "linear"),
+            ("warmup_steps", float, 0), ("logging_steps", int, 500), ("save_steps", int, 500), ("save_total_limit", int, 0),
+            ("eval_steps", int, 0), ("bf16", bool, False), ("fp16", bool, False), ("gradient_checkpointing", bool, False),
+            ("report_to", str, "all"), ("packing", bool, False), ("max_steps", int, -1), ("num_train_epochs", float, 3.0)]
+    if new_api:      # transformers >= 5 / recent TRL: eval_strategy, max_length, no warmup_ratio
+        extra = [("eval_strategy", str, "no"), ("max_length", int, 1024)]
+    else:            # older releases: evaluation_strategy, max_seq_length, warmup_ratio still exists
+        extra = [("evaluation_strategy", str, "no"), ("max_seq_length", int, 1024), ("warmup_ratio", float, 0.0)]
+    SFTConfig = dataclasses.make_dataclass("SFTConfig", [(n, t, dataclasses.field(default=d)) for n, t, d in base + extra])
+    seen = {}
+
+    class SFTTrainer:
+        if new_api:
+            def __init__(self, model, args, train_dataset, eval_dataset, processing_class, peft_config):
+                seen["kw"] = "processing_class"
+                self.model, self.args = model, args
+        else:
+            def __init__(self, model, args, train_dataset, eval_dataset, tokenizer, peft_config):
+                seen["kw"] = "tokenizer"
+                self.model, self.args = model, args
+
+        def train(self, resume_from_checkpoint=None):
+            seen["resume"] = resume_from_checkpoint
+
+    trl = types.ModuleType("trl")
+    trl.SFTConfig, trl.SFTTrainer, trl.__version__ = SFTConfig, SFTTrainer, "fake"
+    datasets = types.ModuleType("datasets")
+    datasets.Dataset = types.SimpleNamespace(from_list=lambda rows: list(rows))
+    peft = types.ModuleType("peft")
+    peft.LoraConfig = lambda **k: k
+    for name, mod in (("trl", trl), ("datasets", datasets), ("peft", peft)):
+        monkeypatch.setitem(sys.modules, name, mod)
+    return seen
+
+
+def test_c2_builds_its_config_for_old_and_new_trl_releases(tmp_path, monkeypatch):
+    """Regression for the first Colab run: transformers dropped warmup_ratio, and the blind max_length/max_seq_length retry hid the real error."""
+    import hashlib
+    from types import SimpleNamespace
+
+    nb, cells = _cells()
+    c2 = _cell(cells, "#@title C2)")
+    assert "warmup_ratio=" not in c2   # the argument (the comment may still explain why it is gone)
+    (tmp_path / "data").mkdir()
+    rows = [{"task": "identify", "messages": [{"role": "user", "content": "q"}, {"role": "assistant", "content": "a"}]}] * 40
+    for name in ("train", "val"):
+        (tmp_path / "data" / f"{name}.jsonl").write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+    (tmp_path / "data" / "kb_test_seen.jsonl").write_text("{}", encoding="utf-8")
+    for new_api in (True, False):
+        for smoke in (True, False):
+            seen = _fake_trl(monkeypatch, new_api=new_api)
+            saved = []
+            tok = SimpleNamespace(padding_side="left", save_pretrained=lambda p: saved.append(p))
+            model = SimpleNamespace(save_pretrained=lambda p: saved.append(p))
+            ns = {"json": json, "hashlib": hashlib, "ROOT": tmp_path, "MODEL_NAME": "m", "SMOKE": smoke, "tok": tok, "model": model,
+                  "use_bf16": True, "transformers": SimpleNamespace(__version__="fake")}
+            exec(compile(c2, "C2", "exec"), ns)
+            cfg = ns["cfg"]
+            assert seen["kw"] == ("processing_class" if new_api else "tokenizer") and seen["resume"] is None
+            assert (cfg.max_length if new_api else cfg.max_seq_length) == 1024
+            assert (cfg.eval_strategy if new_api else cfg.evaluation_strategy) == "steps"
+            assert isinstance(cfg.warmup_steps, int) and cfg.warmup_steps >= 1
+            assert tok.padding_side == "right" and len(saved) == 2
+            assert ns["CKPT"].name.startswith("m-smoke-" if smoke else "m-") and ns["ADAPTER"].name.startswith("m-smoke" if smoke else "m-lora")
+
+
+def test_c2_names_an_argument_the_installed_release_does_not_know(tmp_path, monkeypatch):
+    import hashlib
+    from types import SimpleNamespace
+
+    import pytest
+
+    nb, cells = _cells()
+    (tmp_path / "data").mkdir()
+    rows = [{"task": "identify", "messages": [{"role": "user", "content": "q"}, {"role": "assistant", "content": "a"}]}] * 4
+    for name in ("train", "val"):
+        (tmp_path / "data" / f"{name}.jsonl").write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+    (tmp_path / "data" / "kb_test_seen.jsonl").write_text("{}", encoding="utf-8")
+    _fake_trl(monkeypatch, new_api=True)
+    src = _cell(cells, "#@title C2)").replace('report_to="none"', 'report_to="none", some_removed_flag=True')
+    ns = {"json": json, "hashlib": hashlib, "ROOT": tmp_path, "MODEL_NAME": "m", "SMOKE": True, "use_bf16": True,
+          "tok": SimpleNamespace(padding_side="left"), "model": SimpleNamespace(), "transformers": SimpleNamespace(__version__="fake")}
+    with pytest.raises(AssertionError, match="some_removed_flag"):
+        exec(compile(src, "C2", "exec"), ns)
