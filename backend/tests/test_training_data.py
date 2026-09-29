@@ -399,8 +399,9 @@ def test_c2_names_an_argument_the_installed_release_does_not_know(tmp_path, monk
         exec(compile(src, "C2", "exec"), ns)
 
 
-def _run_e1(monkeypatch, tmp_path, *, torchao, transformers_version, in_colab=True, leftovers=("trainer", "tuned", "model")):
-    """Runs cell E1 with stand-ins; returns (namespace, subprocess calls, kwargs given to from_pretrained)."""
+def _run_e1(monkeypatch, tmp_path, *, torchao, transformers_version, in_colab=True, leftovers=("trainer", "tuned", "model"),
+            report_in_memory=True, smoke=True, decision="DO NOT SHIP"):
+    """Runs cell E1 with stand-ins; returns (namespace, subprocess calls, what the fakes saw)."""
     import importlib.metadata as md
     import types
     from types import SimpleNamespace
@@ -420,41 +421,64 @@ def _run_e1(monkeypatch, tmp_path, *, torchao, transformers_version, in_colab=Tr
     class AutoPeftModelForCausalLM:
         @staticmethod
         def from_pretrained(path, device_map=None, **kw):
-            seen["kw"] = kw
+            seen["device_map"], seen["kw"], seen["adapter"] = device_map, kw, path
             return SimpleNamespace(merge_and_unload=lambda: Merged())
 
     peft = types.ModuleType("peft")
     peft.AutoPeftModelForCausalLM = AutoPeftModelForCausalLM
-    monkeypatch.setitem(sys.modules, "peft", peft)
+    torch = types.ModuleType("torch")
+    torch.bfloat16 = "bf16-stand-in"
+    torch.cuda = SimpleNamespace(empty_cache=lambda: seen.setdefault("emptied", True))
+    tf = types.ModuleType("transformers")
+    tf.__version__ = transformers_version
+    tf.AutoTokenizer = SimpleNamespace(from_pretrained=lambda p: SimpleNamespace(save_pretrained=lambda q: seen.setdefault("tok", (p, q))))
+    for name, mod in (("peft", peft), ("torch", torch), ("transformers", tf)):
+        monkeypatch.setitem(sys.modules, name, mod)
+
+    report = {"decision": decision, "smoke": smoke, "base": "base", "model_name": "m",
+              "after": {"ccna": {}, "grounding": {}, "kb": {}}, "kb_rules": {}}
+    (tmp_path / "models" / "m-smoke-lora").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "models" / "m-lora").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "reports").mkdir(exist_ok=True)
+    (tmp_path / "reports" / "eval_report.json").write_text(json.dumps(report), encoding="utf-8")
     ns = {
-        "report": {"decision": "DO NOT SHIP", "after": {"ccna": {}, "grounding": {}, "kb": {}}, "kb_rules": {}}, "SMOKE": True,
-        "IN_COLAB": in_colab, "sys": sys, "subprocess": SimpleNamespace(run=lambda cmd, **k: calls.append(cmd)),
-        "torch": SimpleNamespace(cuda=SimpleNamespace(empty_cache=lambda: None)),
-        "transformers": SimpleNamespace(__version__=transformers_version), "dtype": "bf16-stand-in",
-        "ADAPTER": tmp_path / "adapter", "ROOT": tmp_path, "RUN_NAME": "m", "MODEL_NAME": "m", "BASE": "base",
-        "tok": SimpleNamespace(save_pretrained=lambda p: None), "save_json": lambda p, o: None, "now": lambda: "now", "kb_eval": kb_eval,
+        "json": json, "IN_COLAB": in_colab, "sys": sys, "subprocess": SimpleNamespace(run=lambda cmd, **k: calls.append(cmd)),
+        "ROOT": tmp_path, "save_json": lambda p, o: None, "now": lambda: "now", "kb_eval": kb_eval,
     }
+    if report_in_memory:
+        ns["report"] = report
     for name in leftovers:
         ns[name] = object()
     exec(compile(_cell(_cells()[1], "#@title E1)"), "E1", "exec"), ns)
     return ns, calls, seen
 
 
-def test_e1_removes_an_old_torchao_frees_the_gpu_and_can_be_rerun(monkeypatch, tmp_path):
-    """Regression for the Colab error 'Found an incompatible version of torchao. Found version 0.10.0, but only versions above 0.16.0'."""
+def test_e1_removes_an_old_torchao_merges_on_the_cpu_and_can_be_rerun(monkeypatch, tmp_path):
+    """Regressions from the Colab runs: 'incompatible version of torchao', and device_map="auto" asking for an offload folder."""
     ns, calls, seen = _run_e1(monkeypatch, tmp_path, torchao="0.10.0", transformers_version="5.0.0")
-    assert any(c[-3:] == ["uninstall", "-y", "-q", "torchao"] or c[-1] == "torchao" for c in calls) and "uninstall" in calls[0]
-    assert seen["kw"] == {"dtype": "bf16-stand-in"} and seen["saved"].endswith("m")
+    assert len(calls) == 1 and calls[0][-4:] == ["uninstall", "-y", "-q", "torchao"]
+    assert seen["device_map"] == {"": "cpu"} and seen["kw"] == {"dtype": "bf16-stand-in"}      # never depends on free GPU memory
+    assert seen["saved"].endswith("m-smoke") and seen["tok"][0] == seen["adapter"] and seen["emptied"]
     assert not {"trainer", "tuned", "model"} & set(ns)
     # a rerun after the failed attempt: trainer / tuned / model are already gone, and torchao already removed
     ns2, calls2, _ = _run_e1(monkeypatch, tmp_path, torchao=None, transformers_version="5.0.0", leftovers=())
     assert calls2 == [] and "merged" in ns2
 
 
-def test_e1_leaves_a_compatible_torchao_alone_and_picks_the_dtype_name_by_version(monkeypatch, tmp_path):
+def test_e1_after_a_runtime_restart_reads_everything_from_the_report_on_drive(monkeypatch, tmp_path):
+    ns, calls, seen = _run_e1(monkeypatch, tmp_path, torchao=None, transformers_version="4.50.0", leftovers=(), report_in_memory=False)
+    assert ns["RUN_NAME"] == "m-smoke" and ns["BASE"] == "base" and ns["ADAPTER"] == tmp_path / "models" / "m-smoke-lora"
+    assert seen["kw"] == {"torch_dtype": "bf16-stand-in"}                                     # older transformers name
+    full, _, seen_full = _run_e1(monkeypatch, tmp_path, torchao=None, transformers_version="5.0.0", smoke=False, decision="SHIP")
+    assert full["RUN_NAME"] == "m" and Path(seen_full["saved"]).name == "m" and Path(seen_full["saved"]).parent.name == "merged"
+
+
+def test_e1_refuses_a_model_that_should_not_ship_and_never_edits_a_local_environment(monkeypatch, tmp_path):
     import pytest
 
-    _, calls, seen = _run_e1(monkeypatch, tmp_path, torchao="0.17.0", transformers_version="4.50.0")
-    assert calls == [] and seen["kw"] == {"torch_dtype": "bf16-stand-in"}
+    with pytest.raises(AssertionError, match="DO NOT SHIP"):
+        _run_e1(monkeypatch, tmp_path, torchao=None, transformers_version="5.0.0", smoke=False, decision="DO NOT SHIP")
     with pytest.raises(RuntimeError, match="torchao 0.10.0"):        # a local environment is never modified behind the user's back
         _run_e1(monkeypatch, tmp_path, torchao="0.10.0", transformers_version="5.0.0", in_colab=False)
+    _, calls, _ = _run_e1(monkeypatch, tmp_path, torchao="0.17.0", transformers_version="5.0.0")   # a compatible torchao is left alone
+    assert calls == []

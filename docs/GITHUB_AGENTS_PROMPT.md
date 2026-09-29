@@ -49,7 +49,7 @@ STEP 3 — If a custom agent or the task box is missing (read only)
 STEP 4 — One small test session (ONLY after I write "go test")
   A session uses my Copilot quota. Start exactly ONE session in this repository, choosing the agent docs-keeper (or the default agent if docs-keeper is
   not offered), with this task text, verbatim:
-    "Read-only check, please do not modify any file: compare the numbers stated in README.md (16 agents, 43 vendors, 266 tests) with the code
+    "Read-only check, please do not modify any file: compare the numbers stated in README.md (16 agents, 43 vendors, 267 tests) with the code
      (backend/app/agents/roster.py, backend/app/knowledge/data, backend/tests) and reply with a short list of any number that is wrong."
   Watch the session until it finishes (check about every minute, do not interrupt it). Report the agent's final answer and whether it opened a pull request.
   Do NOT merge, approve, comment on or close anything it created. If it opened a pull request, give me its link and stop.
