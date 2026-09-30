@@ -172,16 +172,28 @@ def _f(x) -> str:
     return f"{x:.2f}" if isinstance(x, float) else str(x)
 
 
-COLUMNS = (("run", 24), ("when (UTC)", 16), ("model", 7), ("CCNA", 12), ("ground", 6), ("ident", 5), ("syslog", 6), ("cmd", 5), ("diag", 5),
+def _pct(x) -> str:
+    """A 0..1 rate as a score out of 100 with one decimal (0.933 -> '93.3'); None -> '-'."""
+    if x is None:
+        return "-"
+    return f"{float(x) * 100:.1f}"
+
+
+def headline_pct(h: dict) -> dict:
+    """kb_eval.headline() with every rate as a score out of 100 ('67.0'); the unsafe-command count stays a plain count."""
+    return {k: (v if k == "unsafe_command_count" else _pct(v)) for k, v in h.items()}
+
+
+COLUMNS = (("run", 24), ("when (UTC)", 16), ("model", 7), ("CCNA /100", 14), ("ground", 6), ("ident", 5), ("syslog", 6), ("cmd", 5), ("diag", 5),
            ("config", 6), ("refuse", 6), ("invent", 6), ("unsafe", 6), ("decision", 12))
 
 
 def table(entries: list[dict]) -> str:
     def row(e):
         s, u = e.get("kb_seen") or {}, e.get("kb_unseen") or {}
-        return [e["run"], (e.get("when") or "")[:16].replace("T", " "), e["kind"], f"{_f(e.get('ccna'))} (n={e.get('ccna_n')})", _f(e.get("grounded")),
-                _f(s.get("identify_exact")), _f(s.get("syslog_exact")), _f(s.get("command_lookup")), _f(s.get("problem_diagnose")),
-                _f(s.get("config_model")), _f(s.get("refusal")), _f(u.get("invented_command_rate")),
+        return [e["run"], (e.get("when") or "")[:16].replace("T", " "), e["kind"], f"{_pct(e.get('ccna'))} (n={e.get('ccna_n')})", _pct(e.get("grounded")),
+                _pct(s.get("identify_exact")), _pct(s.get("syslog_exact")), _pct(s.get("command_lookup")), _pct(s.get("problem_diagnose")),
+                _pct(s.get("config_model")), _pct(s.get("refusal")), _pct(u.get("invented_command_rate")),
                 "-" if not s else _f((s.get("unsafe_command_count") or 0) + (u.get("unsafe_command_count") or 0)),
                 e.get("decision") or "-"]
 
@@ -204,9 +216,9 @@ def anomaly_text(reports_dir) -> str:
     meta = json.loads(path.read_text(encoding="utf-8"))
     m = meta["metrics"]
     lines = [f"Stage A, Isolation Forest ({meta.get('data_source', '?')}, trained {meta.get('trained_at', '?')[:16].replace('T', ' ')}): "
-             f"AUC {_f(m.get('auc'))}, false alarms {_f(m.get('fpr_iforest@0.6'))} (static thresholds {_f(m.get('fpr_static'))})"]
+             f"AUC {_pct(m.get('auc'))}/100, false alarms {_pct(m.get('fpr_iforest@0.6'))}% (static thresholds {_pct(m.get('fpr_static'))}%)"]
     for sc, v in m.get("scenarios", {}).items():
-        lines.append(f"  {sc:18s} detects {_f(v.get('tpr_iforest@0.6'))} of fault windows (static thresholds {_f(v.get('tpr_static'))})")
+        lines.append(f"  {sc:18s} detects {_pct(v.get('tpr_iforest@0.6'))}% of fault windows (static thresholds {_pct(v.get('tpr_static'))}%)")
     return "\n".join(lines)
 
 
@@ -216,8 +228,9 @@ def report_text(reports_dir) -> str:
         return "No evaluation yet: run cells C1 to D1 (or F2) first."
     smoke_only = all(e.get("smoke") for e in entries)
     notes = [
+        "Every score is out of 100 (93.3 = 93.3 of 100 answers right); unsafe is a plain count and must be 0.",
         "ground = answers whose numbers are all in the facts; ident/syslog/cmd/diag/config/refuse = vendor-knowledge accuracy on test_seen;",
-        "invent = commands not in the knowledge base (test_unseen, lower is better); unsafe = change commands that are not approved fixes (must be 0).",
+        "invent = share of commands not in the knowledge base (test_unseen, lower is better); unsafe = change commands that are not approved fixes (must be 0).",
         "'base' rows are the untrained model, 'tuned' rows are after training, 'merged' rows are a saved model measured later (F2),",
         "'teacher' rows are the Groq teacher on the same kind of CCNA questions (a reference ceiling; n is its own sample size).",
     ]
