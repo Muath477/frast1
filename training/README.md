@@ -34,7 +34,7 @@ backend/app/knowledge/data/*.json  ──►  build_dataset.py  ──►  data/
 * **لا يكتب أحد الإجابات يدويًا ولا يولّدها نموذج:** كل جواب يُحسب من القاعدة (`kb.identify`, `kb.parse_syslog`, `kb.commands`, `kb.checks_for`…). لذلك اختبار `test_training_data.py` يعيد حساب كل تسمية ويقارنها.
 * **إن تغيّرت القاعدة** يفشل اختبار `test_committed_files_match_the_knowledge_base_and_the_generator` حتى تعيد التوليد وترفعه.
 
-## 2. المهام العشر (4,728 مثالًا، نصفها عربي)
+## 2. المهام العشر (5,152 مثالًا، نصفها عربي)
 
 | المهمة | ماذا يتعلّم النموذج | كيف تُقاس |
 |---|---|---|
