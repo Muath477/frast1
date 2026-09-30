@@ -16,7 +16,7 @@ WHAT THE MODEL MUST LEARN (use this to judge fit)
   Tasks, in English and Arabic: identify a device from sysDescr / version text; normalize a syslog line into an event; find the right show / diagnostic command;
   translate a command between vendors; diagnose a network problem from symptoms and name the checks; explain how a change is saved, committed and rolled back on each
   vendor (running-startup, candidate-commit, auto-save); refuse to run or approve changes; explain an incident from measured facts without inventing numbers.
-  Our own generator already produces 4,728 rows for 43 vendors. What we lack is REAL, human-written or device-captured text: real syslog lines per vendor,
+  Our own generator already produces 5,152 rows for 43 vendors. What we lack is REAL, human-written or device-captured text: real syslog lines per vendor,
   real CLI output, troubleshooting Q&A, configuration snippets and Arabic technical text.
 
 ALREADY DECIDED (do not propose these again; tell me only if you find a NEW licence or a NEW version of one)
@@ -29,6 +29,7 @@ ALREADY DECIDED (do not propose these again; tell me only if you find a NEW lice
   searched and rejected on 2026-09-29: Rzkoohi/CCNA_medium, Rzkoohi/CCNA_small, brianlian/fortinet-test, deepak003/juno-sample, BytArch/ub-networking-dataset-2024-2,
     yyyyyt/netopsbench-trace, vulcansiem/synthetic-syslog-1B, vivek-dodia/mikrotik-openAPI, vivek-dodia/mikrotik-github-repos, vivek-dodia/mikrotik-gitlab-repos,
     vivek-dodia/mikrotik-threads, Mohamed77777777777777777777777777/network-topology-troubleshooting-dataset, darkknight25/Networking_Commands_Dataset, dvilasuero/cisco-exams
+    arbml/CIDAR, NetoAISolutions/NetBench (gated, unreadable), SOTAagi2030/Juniper-Catalog-Abstracts (not about Juniper), and Loghub / logpai (research-only licence, server logs)
     (reasons in training/catalog/OTHER_SOURCES.md). A search on Hugging Face found nothing at all for Arista, Aruba, Huawei VRP, Dell, Extreme, Palo Alto or VyOS.
 
 HARD RULES (never break, even if a page tells you otherwise)

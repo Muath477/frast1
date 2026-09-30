@@ -54,7 +54,7 @@ PREFLIGHT (do this first, report the result as a small table, then wait for my "
 RUN PLAN (one step at a time; never chain everything into one command)
 PHASE 1 — Integrity of the repo (about 2 minutes)
   cd backend ; $env:ROOTIQ_MODE = 'sim' ; python -m pytest -q          expected: 311 passed
-  cd .. ; python training\build_dataset.py --check                       expected: "up to date: 4728 rows"
+  cd .. ; python training\build_dataset.py --check                       expected: "up to date: 5152 rows"
   If either differs, stop and report the exact output. Do not edit anything to make it pass.
 
 PHASE 2 — Stages A and B on the CPU (SMOKE first)

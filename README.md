@@ -49,7 +49,7 @@ Per-agent details: [`docs/AGENTS.md`](docs/AGENTS.md).
 | Syslog | `POST /api/syslog` (same ingest token as `/api/events`) | [`docs/AGENTS.md`](docs/AGENTS.md) §4.15 |
 | Copilot | Answers command, problem and save-config questions for up to 4 vendors side by side, verbatim from the knowledge base, with sources | [`docs/AGENTS.md`](docs/AGENTS.md) §4.9 |
 | UI | Incident plan shows **Vendor diagnostics** and **Applying a change**; the Agents page lists all 16 agents | `frontend/src/components/incidents/VendorCommands.tsx` |
-| Training | `training/`: generated dataset (about 4.7k EN/AR examples, 10 tasks), offline evaluator, Hugging Face catalog, Colab notebook | [`training/README.md`](training/README.md) · [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) |
+| Training | `training/`: generated dataset (about 5.2k EN/AR examples, 10 tasks), offline evaluator, Hugging Face catalog, Colab notebook | [`training/README.md`](training/README.md) · [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) |
 | Mixed-vendor lab | Example topology: Cisco + Juniper vQFX + Arista vEOS + FortiGate-VM + Aruba AOS-CX | [`configs/topology.multivendor.example.json`](configs/topology.multivendor.example.json) |
 | Tests | 311 backend tests (151 before) | `cd backend && pytest -q` |
 
