@@ -108,8 +108,8 @@ Run in this order and check the expected output before moving on:
   E1                 DO NOT RUN in the smoke phase (it writes ~8 GB to Drive).
   F2                 DO NOT RUN before E1 (it measures the exported model). Skip it in the smoke phase.
   F3                 only when I ask: reloads a saved adapter and lists why a run fails (unsafe commands, failed rows). D1 already prints the same list ("Mistakes of the tuned model").
-  F4                 only when I ask: the Gemini exam (Gemini writes extra questions for every field of the project and grades the tuned model's answers; needs a secret NAMED GEMINI_API_KEY,
-                     which you only check for, never open). It measures the model; its output is never training data. Paste its table into your report.
+  F4                 only when I ask: the exam by two examiners (Gemini and Groq write extra questions for every field of the project and both grade the tuned model's answers; needs a secret NAMED
+                     GEMINI_API_KEY and/or GROQ_API_KEY, which you only check for, never open). It measures the model; its output is never training data. Paste its table into your report.
 After D1: refresh the DRIVE tab and check, read-only, that these exist with non-zero sizes: data/train.jsonl, val.jsonl, eval_grounded.jsonl,
 kb_test_seen.jsonl, kb_test_unseen.jsonl, models/iforest.joblib, reports/anomaly_report.json, reports/eval_before.json, reports/eval_report.json,
 checkpoints/rootiq-network-v1-smoke-<8 hex chars>/ and models/rootiq-network-v1-smoke-lora/ (the SMOKE run uses the suffix -smoke and the folder name ends with

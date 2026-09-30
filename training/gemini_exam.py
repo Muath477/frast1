@@ -1,14 +1,15 @@
-"""Gemini as the EXAMINER: it writes extra test questions for every field of RootIQ and grades the answers of the tuned model.
+"""Gemini and Groq as EXAMINERS: they write extra test questions for every field of RootIQ and grade the answers of the tuned model.
 
-    exam = build_exam(GeminiClient(key), per_domain=8, path=ROOT / "data" / "gemini_exam.jsonl")     # questions, saved so every run asks the same ones
-    results = grade(exam, answers, lambda item, answer: judge(client, item, answer), kb_eval)           # Gemini judges; our knowledge base checks the commands
-    print(exam_text(summarize(results)))
+    clients = [GeminiClient(gemini_key), GroqClient(groq_key)]                                      # either one alone also works
+    exam = build_exam(clients, per_domain=8, path=ROOT / "data" / "exam.jsonl")                      # questions, shared between the examiners, saved so every run asks the same ones
+    results = grade(exam, answers, combined_judge(clients), kb_eval)                                  # both grade every answer; our knowledge base checks the commands
+    print(exam_text(summarize(results)))                                                             # per field, per judge, and where the judges disagree
 
-Two rules:
-  * Gemini output is used to MEASURE the model, never as training data (the Gemini API terms do not allow building competing models from its output).
-  * The judge is not trusted alone: every command in an answer is also checked against the vendor knowledge base (invented / unsafe), with no LLM involved.
+Rules:
+  * The examiners only MEASURE the model. Gemini output is never used as training data (the Gemini API terms do not allow building competing models from its output).
+  * A judge is not trusted alone: two judges are compared, and every command in an answer is also checked against the vendor knowledge base (invented / unsafe), with no LLM involved.
 
-The key comes from Colab Secrets (name it GEMINI_API_KEY: Colab secret names cannot contain spaces), is sent in a header, and is never printed or written to a file.
+The keys come from Colab Secrets (GEMINI_API_KEY, GROQ_API_KEY: Colab secret names cannot contain spaces), are sent in a header, and are never printed or written to a file.
 """
 from __future__ import annotations
 
@@ -41,6 +42,7 @@ GEN_SYSTEM = ("You write exam questions for a network-operations assistant. Be p
 
 class GeminiClient:
     """Small Gemini REST client: retries on rate limits, caches every answer on disk, never prints or stores the key."""
+    name = "gemini"
 
     def __init__(self, api_key: str, model: str | None = None, cache: Path | None = None, post=None, get=None, sleep=time.sleep):
         if not api_key:
@@ -138,6 +140,67 @@ class GeminiClient:
         return None
 
 
+class GroqClient:
+    """The same interface over Groq's OpenAI-compatible API (open-weights gpt-oss-120b): a second, independent examiner next to Gemini.
+    Unlike Gemini, this model's output may also be used to make training data (that is what cells B1 to B3 do); here it only asks and grades."""
+    name = "groq"
+    URL = "https://api.groq.com/openai/v1/chat/completions"
+
+    def __init__(self, api_key: str, model: str = "openai/gpt-oss-120b", cache: Path | None = None, post=None, sleep=time.sleep):
+        if not api_key:
+            raise ValueError("no Groq API key: add a Colab secret named GROQ_API_KEY with Notebook access ON")
+        self._key, self.model, self._sleep = api_key, model, sleep
+        self._post = post or self._httpx_post
+        self.cache_path = Path(cache) if cache else None
+        self._cache: dict = {}
+        if self.cache_path and self.cache_path.exists():
+            for line in self.cache_path.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    rec = json.loads(line)
+                    self._cache[rec["k"]] = rec["v"]
+
+    def __repr__(self) -> str:
+        return f"GroqClient(model={self.model!r}, key=<hidden>)"
+
+    def _httpx_post(self, url, headers, json, timeout):
+        import httpx
+
+        return httpx.post(url, headers=headers, json=json, timeout=timeout)
+
+    def generate(self, prompt: str, system: str | None = None, json_mode: bool = True, temperature: float = 0.2, max_tokens: int = 4096) -> str | None:
+        ck = hashlib.sha256(json.dumps(["groq", self.model, system, prompt, json_mode, temperature, max_tokens], ensure_ascii=False).encode()).hexdigest()
+        if ck in self._cache:
+            return self._cache[ck]
+        messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt + ("\n\nReturn only JSON." if json_mode else "")}]
+        body = {"model": self.model, "temperature": temperature, "max_tokens": max_tokens, "messages": messages}
+        headers = {"authorization": f"Bearer {self._key}", "content-type": "application/json"}
+        for attempt in range(8):
+            try:
+                r = self._post(self.URL, headers=headers, json=body, timeout=120)
+            except Exception:  # noqa: BLE001
+                self._sleep(2 ** attempt)
+                continue
+            if r.status_code == 429 or r.status_code >= 500:
+                self._sleep(min(float((getattr(r, "headers", None) or {}).get("retry-after", 2 ** attempt)), 90))
+                continue
+            if r.status_code == 404:
+                raise RuntimeError(f"Groq model {self.model!r} not found: check the name with GET https://api.groq.com/openai/v1/models")
+            if r.status_code != 200:
+                raise RuntimeError(f"Groq request failed: HTTP {r.status_code}")
+            try:
+                text = (r.json()["choices"][0]["message"].get("content") or "").strip()
+            except (KeyError, IndexError, TypeError):
+                return None
+            if text:
+                self._cache[ck] = text
+                if self.cache_path:
+                    self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+                    with self.cache_path.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps({"k": ck, "v": text}, ensure_ascii=False) + "\n")
+            return text or None
+        return None
+
+
 def parse_json(text: str | None):
     """JSON out of a model answer, tolerant of code fences and of text around the JSON. None when there is none."""
     if not text:
@@ -176,20 +239,28 @@ def generate_items(client: GeminiClient, domain: str, lang: str, n: int) -> list
     for raw in data if isinstance(data, list) else []:
         item = _clean_item(raw, domain, lang)
         if item and item["id"] not in seen:
+            item["author"] = getattr(client, "name", "llm")
             seen.add(item["id"])
             items.append(item)
     return items[:n]
 
 
-def build_exam(client: GeminiClient, per_domain: int = 8, path: Path | None = None, domains: dict | None = None) -> list[dict]:
-    """The exam: per_domain questions for every field (English and Arabic; the Arabic domain in Arabic only). Saved to `path`, so every later run asks the same questions."""
+def build_exam(client, per_domain: int = 8, path: Path | None = None, domains: dict | None = None) -> list[dict]:
+    """The exam: per_domain questions for every field (English and Arabic; the Arabic domain in Arabic only). `client` is one client or a list: with several, they share
+    the questions of every field, so no single model's blind spots set the whole exam. Saved to `path`, so every later run asks the same questions."""
     if path and Path(path).exists():
         return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
+    clients = list(client) if isinstance(client, (list, tuple)) else [client]
     exam: list[dict] = []
     for domain in (domains or DOMAINS):
         langs = DOMAIN_LANGS.get(domain, ("en", "ar"))
         for lang in langs:
-            exam += generate_items(client, domain, lang, max(1, per_domain // len(langs)))
+            n = max(1, per_domain // len(langs))
+            for i, cl in enumerate(clients):
+                share = n // len(clients) + (1 if i < n % len(clients) else 0)
+                if share:
+                    exam += generate_items(cl, domain, lang, share)
+    exam = list({q["id"]: q for q in exam}.values())
     if path:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         Path(path).write_text("\n".join(json.dumps(i, ensure_ascii=False) for i in exam) + "\n", encoding="utf-8")
@@ -210,6 +281,19 @@ def judge(client: GeminiClient, item: dict, answer: str) -> dict:
         return {"score": None, "missing": [], "violations": [], "comment": "the judge returned no valid score"}
     return {"score": int(data["score"]), "missing": [str(x) for x in data.get("missing", [])][:5], "violations": [str(x) for x in data.get("violations", [])][:5],
             "comment": str(data.get("comment", ""))[:300]}
+
+
+def combined_judge(clients):
+    """Grade every answer with every examiner: score = the mean of the graded marks, `scores` keeps each judge's mark, `agree` says whether they all gave the same mark."""
+    def run(item: dict, answer: str) -> dict:
+        verdicts = {c.name: judge(c, item, answer) for c in clients}
+        scored = {n: v["score"] for n, v in verdicts.items() if v["score"] is not None}
+        if not scored:
+            return {**next(iter(verdicts.values())), "scores": {}, "agree": None}
+        return {"score": sum(scored.values()) / len(scored), "scores": scored, "agree": len(set(scored.values())) == 1,
+                "missing": sorted({m for v in verdicts.values() for m in v["missing"]})[:5], "violations": sorted({m for v in verdicts.values() for m in v["violations"]})[:5],
+                "comment": " | ".join(f"{n}: {v['comment']}" for n, v in verdicts.items() if v["score"] is not None)[:400]}
+    return run
 
 
 def local_command_check(answer: str, vendor: str | None, kb_eval, known=None) -> dict:
@@ -236,12 +320,16 @@ def summarize(results: list[dict]) -> dict:
     """Per domain and overall: mean score as a percentage (2 of 2 = 100), the share of full-mark answers, unsafe commands (must be 0), ungraded answers."""
     def stats(rows):
         scored = [r["score"] for r in rows if r["score"] is not None]
+        several = [r for r in rows if len(r.get("scores") or {}) > 1]
         return {"n": len(rows), "graded": len(scored), "score_pct": round(100 * sum(scored) / (2 * len(scored)), 1) if scored else None,
                 "full_marks_pct": round(100 * sum(s == 2 for s in scored) / len(scored), 1) if scored else None,
-                "unsafe": sum(len(r["unsafe"]) for r in rows), "invented": sum(len(r["invented"]) for r in rows)}
+                "unsafe": sum(len(r["unsafe"]) for r in rows), "invented": sum(len(r["invented"]) for r in rows),
+                "judges_differ_pct": round(100 * sum(not r["agree"] for r in several) / len(several), 1) if several else None}
     domains = sorted({r["domain"] for r in results})
+    judges = sorted({n for r in results for n in (r.get("scores") or {})})
+    by_judge = {n: round(100 * sum(r["scores"][n] for r in results if n in (r.get("scores") or {})) / (2 * sum(n in (r.get("scores") or {}) for r in results)), 1) for n in judges}
     return {"overall": stats(results), "by_domain": {d: stats([r for r in results if r["domain"] == d]) for d in domains},
-            "by_lang": {lg: stats([r for r in results if r["lang"] == lg]) for lg in sorted({r["lang"] for r in results})}}
+            "by_lang": {lg: stats([r for r in results if r["lang"] == lg]) for lg in sorted({r["lang"] for r in results})}, "by_judge": by_judge}
 
 
 def exam_text(summary: dict, results: list[dict] | None = None, worst: int = 5) -> str:
@@ -251,6 +339,10 @@ def exam_text(summary: dict, results: list[dict] | None = None, worst: int = 5) 
     lines = ["Gemini exam: score = the judge's 0-2 mark as a percentage; the command counts come from our own knowledge base, not from Gemini", ""]
     lines += [row(d, s) for d, s in sorted(summary["by_domain"].items(), key=lambda kv: (kv[1]["score_pct"] is None, kv[1]["score_pct"] or 0))]
     lines += ["  " + "-" * 92, row("ALL", summary["overall"]), ""] + [row(f"[{lg}]", s) for lg, s in summary["by_lang"].items()]
+    if summary.get("by_judge"):
+        differ = summary["overall"].get("judges_differ_pct")
+        lines += ["", "  judges: " + ", ".join(f"{n} {v:.1f}/100" for n, v in summary["by_judge"].items())
+                  + (f"   (they gave different marks on {differ:.1f}% of the answers: look at those first)" if differ is not None else "")]
     if results:
         bad = sorted((r for r in results if r["score"] is not None and r["score"] < 2), key=lambda r: (r["score"], r["domain"]))[:worst]
         lines += ["", f"The {len(bad)} weakest answers:"]
