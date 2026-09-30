@@ -48,8 +48,10 @@ STEP 2 — RUN THESE CELLS IN THIS ORDER (skip every cell not listed: not "2) In
   B2       tutor data (slow)              -> "tutor examples kept: X / 110".
   B3       grounded tasks (slow)          -> "template-grounded examples: 2640 (rejected by the grounding check: 0)" and "teacher paraphrases kept: X / 150" (a low X is normal).
                                           B1-B3 wait by themselves on Groq HTTP 429 and cache every answer on Drive. Do nothing; if one seems stuck for more than 20 minutes, tell me.
-  B4       public data                    -> lines for the two Hugging Face sets, then "ntc-templates @ <hash>: about 383 rows, 13 platforms | licence Apache-2.0" and "external rows: N".
-                                          An error in the ntc part: report it, then (allowed edit) set INCLUDE_EXTERNAL = False in cell 1, rerun cell 1 and cell 3, and restart from B0. Tell me.
+  B4       outside data (collect_data)    -> a table "collected into <out>/full/" with one line per source and tier: train = mikrotik Q&A (up to 1500 rows), witfoo syslog (500), ntc-templates (about 383);
+                                          eval = Elfsong/Cisco_CCNA (343); reference = NetConfEval, rachid-abdou/NetConfEval, snmp-diagnostic-agent-traces, mikrotik-docs; then "external rows: N" (about 2,400).
+                                          A source that failed shows its error in the table and a "WARNING: these train sources failed" line: report it, rerun B4 ONCE (finished files are reused, failed ones are retried).
+                                          If a TRAIN source fails twice, go on without it and tell me. A failed eval or reference source does not matter for the training: just report it.
   B5       assemble and save              -> "train ... | val ... | held-out grounding test ... | KB tests seen X / unseen Y". The "train mix by task" must contain identify, syslog,
                                           command_lookup, safety_refusal, explain, recommend and (with the switch on) ext_cli_parse. Report the row counts.
   C0       evaluation helpers             -> "Groq teacher on CCNA (reference ceiling): {'n': 80, ...}". Report the accuracy.
@@ -65,11 +67,11 @@ STEP 2 — RUN THESE CELLS IN THIS ORDER (skip every cell not listed: not "2) In
 
 STEP 3 — CHECK DRIVE (read-only) AND REPORT
   Refresh the DRIVE tab and confirm, with non-zero sizes: data/train.jsonl, val.jsonl, eval_grounded.jsonl, kb_test_seen.jsonl, kb_test_unseen.jsonl, reports/eval_report.json,
-  reports/history.jsonl, reports/errors_rootiq-network-v1_<date>.json, models/rootiq-network-v1-lora/ and checkpoints/rootiq-network-v1-<hash>/. Open reports/eval_report.json in the preview: its "decision" and numbers must match D1's output.
+  reports/history.jsonl, reports/errors_rootiq-network-v1_<date>.json, data/external/full/manifest.json (with train/, eval/ and reference/ next to it), models/rootiq-network-v1-lora/ and checkpoints/rootiq-network-v1-<hash>/. Open reports/eval_report.json in the preview: its "decision" and numbers must match D1's output.
   Then send the FINAL REPORT (format below) and STOP. Do NOT export. Wait for my decision.
 
 ALLOWED EDITS (everything else needs my approval)
-  - SMOKE and INCLUDE_EXTERNAL in cell 1 as in step 1 (and INCLUDE_EXTERNAL = False only under the B4 error rule).
+  - SMOKE and INCLUDE_EXTERNAL in cell 1 as in step 1.
   - Lowering per_device_train_batch_size (and raising gradient_accumulation_steps so the product stays 16) or max_length (1024 -> 768 -> 512) if the GPU runs out of memory; lowering batch_size in generate_batch (8 -> 4 -> 2) if evaluation runs out of memory. Log the values.
   - pip uninstall -y torchao only if peft reports an incompatible torchao. Re-running cells, restarting the runtime, reconnecting.
 

@@ -87,7 +87,8 @@ Run in this order and check the expected output before moving on:
   B2                 prints "tutor examples kept: X / 8".
   B3                 prints "template-grounded examples: N (rejected by the grounding check: 0)" and "teacher paraphrases kept: X / 6".
                      A low paraphrase count (for example 2 of 6) is normal because the filter is strict.
-  B4                 (optional public data) prints "INCLUDE_EXTERNAL = False -> ..." and "external rows: 0". Nothing is downloaded.
+  B4                 (optional outside data) with INCLUDE_EXTERNAL = False prints "INCLUDE_EXTERNAL = False -> ..." and "external rows: 0" and downloads nothing. With True it runs
+                     training/collect_data.py: a table of the sources collected into RootIQ_AI/data/external/<smoke|full>/ (smoke keeps only the train tier) and "external rows: N".
   B5                 prints "train ... | val ... | held-out grounding test ... | KB tests seen X / unseen Y" and "train mix by task: {...}".
                      The mix must contain identify, syslog, command_lookup, safety_refusal AND explain/recommend.
   C0                 prints "Groq teacher on CCNA (reference ceiling): {...}" (a small sample). Report the accuracy.

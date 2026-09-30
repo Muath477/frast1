@@ -59,7 +59,8 @@ MyDrive/RootIQ_AI/
   cache/        teacher.jsonl (كل جواب من Groq يُحفظ: إعادة التشغيل لا تكرر الاستدعاءات)
   checkpoints/  نقاط الاستئناف (انقطاع Colab لا يضيّع شيئًا)
   models/       iforest.joblib · rootiq-network-v1-lora/ · merged/rootiq-network-v1/   (تجربة SMOKE تكتب بلاحقة -smoke، ومجلد نقاط الحفظ ينتهي ببصمة `train.jsonl`، فلا يُستأنف أي checkpoint إلا مع البيانات التي دُرّب عليها)
-  reports/      anomaly_report.json · eval_before.json · eval_report.json (آخر تقييم) · history.jsonl (سطر لكل قياس، لا يُمحى بتدريب جديد؛ تقرؤه الخلية F1)
+  reports/      anomaly_report.json · eval_before.json · eval_report.json (آخر تقييم) · history.jsonl (سطر لكل قياس، لا يُمحى بتدريب جديد؛ تقرؤه الخلية F1) · errors_*.json (أخطاء كل تقييم)
+  data/external/  full/ أو smoke/ ← train/ (صفوف تدريب خارجية) · eval/ · reference/ · restricted/ (اختياري، لا يُدرَّب عليه) + manifest.json + README.md   ← يملؤها collect_data.py (الخلية B4)
 ```
 
 ## 4. الربط بالمنتج
