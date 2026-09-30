@@ -94,6 +94,28 @@ python training/catalog/refresh_catalog.py  # يحدّث الكتالوج من H
 
 راجع [`catalog/CATALOG.md`](catalog/CATALOG.md). القاعدة: **مجموعة بلا رخصة معلنة، أو مشتقة من وثائق مصنّع، لا تُستخدم في تدريب نموذج تشحنه.** لذلك يقبل `external.py` مجموعتين فقط الآن (`zilalzihar/mikrotik-routeros-qa-dataset` وهي Apache-2.0، و`witfoo/syslog-to-artifact` وهي Apache-2.0)؛ وتُحوَّل إلى نفس الصيغة وتُفحص (أسرار، طول، تكرار، نصائح مدمّرة) وتدخل **التدريب فقط** — لا تدخل مجموعات الاختبار كي تبقى الأرقام قابلة للمقارنة بين التجارب. تفعيلها من متغيّر `INCLUDE_EXTERNAL` في الدفتر.
 
+### جمع كل البيانات الخارجية في مكان واحد: `collect_data.py`
+أمر واحد يجمع كل مصادر البيانات الخارجية في **مجلد واحد خاص بك** مع سجل يوضح ما هو كل ملف (المصدر والرخصة وعدد الصفوف وبصمة sha256 والنسخة):
+
+```bash
+python training/collect_data.py --out <RootIQ_AI>/data/external                       # ما يجوز التدريب عليه (train)
+python training/collect_data.py --out ... --tiers train eval reference                # + مجموعة اختبار CCNA + مراجع للقراءة
+python training/collect_data.py --out ... --kaggle owner/dataset-name                 # مجموعة Kaggle، تُقبل فقط برخصة مفتوحة (تحتاج مفتاح Kaggle)
+python training/collect_data.py --out ... --tiers restricted --accept-licence-risk    # مجموعات بلا رخصة صالحة: تجارب خاصة فقط
+```
+
+| المجلد (تحت `full/` أو `smoke/`) | ماذا فيه | هل يُدرَّب عليه؟ |
+|---|---|---|
+| `train/` | أسئلة وأجوبة MikroTik، وسجلات syslog مع ناتجها المهيكل (Hugging Face)، ومخرجات أجهزة حقيقية لـ13 منصة (ntc-templates) بصيغة صفوف الدردشة | **نعم** (بعد فحص الرخصة) |
+| `eval/` | اختبار CCNA (343 سؤالًا) | لا، للقياس فقط |
+| `reference/` | NetConfEval وآثار وكيل SNMP ووثائق MikroTik | لا، للقراءة والاسترجاع |
+| `restricted/` | مجموعات بلا رخصة صالحة أو مشتقة من الوثائق | **لا أبدًا**: تجارب خاصة، لا يقرؤها الدفتر ولا تُشحن في نموذج |
+
+- الدفتر (الخلية **B4** مع `INCLUDE_EXTERNAL = True`) يشغّله تلقائيًا ويحفظ الملفات في `RootIQ_AI/data/external/`، فتبقى عندك على Drive وتُفحص بعينك، ولا يعيد التنزيل ما دامت الملفات موجودة. التجربة المصغّرة تكتب في `smoke/` وتحفظ مجلد `train/` فقط، فلا تتسرب ملفاتها الصغيرة إلى تدريب كامل.
+- أي مصدر يفشل يُسجَّل خطؤه في السجل ولا يوقف البقية، ويُعاد جلبه عند التشغيل التالي.
+- **الرخصة هي الحاجز:** المصدر لا يدخل `train/` إلا إذا وافق عليه الكتالوج (`external.allowed`) أو تحقق ملف LICENSE في مستودعه (`ntc_source.licence_ok`). ومجموعات `restricted` لا يمكن تحويلها إلى صفوف تدريب في الكود، وهناك اختبار يحرس ذلك.
+- ما لم يُجرَّب: تنزيل مجموعات Kaggle فعليًا (لم تتأهل أي مجموعة في بحثي، والأداة جُرّبت بمحاكاة)، وتشغيل `datasets` على Colab نفسه (شغّلتُ الأداة على المصادر الحقيقية بواجهة REST بدل مكتبة `datasets` لأنها غير موجودة على هذا الجهاز).
+
 **مصدر إضافي من GitHub (جديد):** مخرجات أجهزة **حقيقية** لـ13 منصة (Cisco IOS/NX-OS/IOS-XR وJunos وArista وAruba وHP ProCurve وHuawei VRP وFortiOS وMikroTik وExtreme وPalo Alto وDell) من مستودع [`networktocode/ntc-templates`](https://github.com/networktocode/ntc-templates) برخصة **Apache-2.0**: لكل أمر `show`/`display`/`get` مخرجه الخام الملتقط والحقول التي يستخرجها المحلِّل منه. يحمّله [`ntc_source.py`](ntc_source.py) (يتحقق من ملف LICENSE، ويقبل أوامر القراءة فقط، ويحجب الأسرار، ويحدّ الحجم: 383 صفًا بالحدود الافتراضية) كمهمة `ext_cli_parse` **للتدريب فقط**، وتُفعَّل مع `INCLUDE_EXTERNAL = True`. وما بحثتُ عنه في Hugging Face وKaggle ولم أستخدمه، مع الأسباب: [`catalog/OTHER_SOURCES.md`](catalog/OTHER_SOURCES.md). الخلاصة الصريحة: لا توجد على Hugging Face مجموعات نظيفة الرخصة لـArista وAruba وHuawei وDell وExtreme وPalo Alto وVyOS، ومعظم ما وُجد لـJuniper وFortinet بلا رخصة أو مشتق من الوثائق.
 
 ## 6. حدود يجب أن تعرفها

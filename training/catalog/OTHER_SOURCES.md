@@ -2,6 +2,10 @@
 
 `CATALOG.md` is generated from the Hugging Face API. This file is written by hand: one extra source that is used, and the result of a search of Hugging Face and Kaggle so nobody repeats it.
 
+## Collected in one place: `training/collect_data.py`
+
+Every source below, and the Hugging Face sets of `CATALOG.md`, can be gathered by one command into one folder with a manifest (source, licence, rows, sha256, revision): `python training/collect_data.py --out <RootIQ_AI>/data/external --tiers train eval reference` (the notebook's cell B4 does it when `INCLUDE_EXTERNAL = True`). Tiers: **train** (chat rows, licence approved: `zilalzihar/mikrotik-routeros-qa-dataset`, `witfoo/syslog-to-artifact`, ntc-templates), **eval** (`Elfsong/Cisco_CCNA`), **reference** (`NetConfEval/NetConfEval`, `rachid-abdou/NetConfEval`, `shaunak1234/snmp-diagnostic-agent-traces`, `vivek-dodia/mikrotik-docs`), and **restricted** (`ndavidson/cisco_inam_chatml`, `jack0503/junos_cli_qa`, `jack0503/junos_cli_command`, `Coldyuja/junos-user-manual-markdown-raw`, `Rzkoohi/CCNA_medium`: no usable licence or unstated provenance; fetched only with `--accept-licence-risk`, for private experiments, never read by the notebook, never for a model you ship). `--kaggle owner/name` downloads a Kaggle dataset only when its licence is CC0, CC BY 4.0, ODC-BY, Apache-2.0 or MIT.
+
 ## Used (optional, off by default): real device output from `ntc-templates`
 
 | | |

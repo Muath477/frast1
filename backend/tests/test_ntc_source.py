@@ -46,22 +46,6 @@ def _make_repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_notebook_b4_adds_the_ntc_rows_to_the_external_rows(tmp_path, monkeypatch):
-    """Runs cell B4 with the switch on: the ntc rows are added, the clone and the Hugging Face downloads are stubbed."""
-    import external
-
-    _make_repo(tmp_path / "cache" / "ntc-templates")
-    monkeypatch.setattr(ns, "clone", lambda d: "abc1234")
-    monkeypatch.setattr(external, "load_external", lambda name, limit=0, seed=7: [])
-    nb = json.loads((TRAINING / "RootIQ_Training.ipynb").read_text(encoding="utf-8"))
-    b4 = next("".join(c["source"]) for c in nb["cells"] if "".join(c["source"]).startswith("#@title B4)"))
-    scope = {"INCLUDE_EXTERNAL": True, "SMOKE": True, "json": json, "REPO": TRAINING.parent, "rq_external": external, "pathlib": Path, "IN_COLAB": False, "ROOT": tmp_path}
-    exec(compile(b4, "B4", "exec"), scope)
-    rows = scope["external_rows"]
-    assert {r["task"] for r in rows} == {"ext_cli_parse"} and len(rows) == 4      # fortinet 1, mikrotik 1, juniper 2 (two samples of one command)
-    assert all(r["split"] == "train" for r in rows)
-
-
 def test_every_platform_maps_to_a_vendor_and_os_of_the_knowledge_base():
     kb = get_kb()
     for platform, (vendor, os_id, name) in ns.PLATFORMS.items():
@@ -105,11 +89,3 @@ def test_a_repository_without_the_apache_licence_is_never_used(repo):
     assert not ns.licence_ok(repo)
     with pytest.raises(PermissionError):
         ns.convert(repo)
-
-
-def test_notebook_b4_loads_ntc_only_when_external_data_is_switched_on():
-    nb = json.loads((TRAINING / "RootIQ_Training.ipynb").read_text(encoding="utf-8"))
-    b4 = next("".join(c["source"]) for c in nb["cells"] if "".join(c["source"]).startswith("#@title B4)"))
-    compile(b4, "B4", "exec")
-    assert b4.index("if INCLUDE_EXTERNAL:") < b4.index("import ntc_source") < b4.index("else:")
-    assert "rq_ntc.convert(" in b4 and "external_rows += got" in b4
