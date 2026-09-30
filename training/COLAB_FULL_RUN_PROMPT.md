@@ -58,6 +58,7 @@ STEP 2 — RUN THESE CELLS IN THIS ORDER (skip every cell not listed: not "2) In
   C0b      vendor evaluation rows         -> "KB evaluation rows: X seen / Y unseen".
   C1       load base model + BEFORE       -> GPU name, "BEFORE training: {...}" with ccna n = 343, and the vendor-knowledge blocks. This takes several minutes. Report the numbers as printed.
   C2       TRAIN (hours)                  -> read the progress bar: note the TOTAL number of steps and the seconds per step after the first 10 steps.
+                                          If it prints "The adapter of the previous run ... was kept as models/<name>", copy that name into the report: it is the old run, kept for a before/after.
                                           Projected time = total steps x seconds per step. If it is more than 8 hours, PAUSE and tell me the numbers before going on (I may switch to L4 or cut the data).
                                           Otherwise keep going. Check about every 60-90 seconds, send me a one-line message about every 20 minutes (step, loss, elapsed).
                                           It ends with "LoRA adapter saved to .../rootiq-network-v1-lora | checkpoints: rootiq-network-v1-<8 hex chars>" (the name has NO "-smoke").
