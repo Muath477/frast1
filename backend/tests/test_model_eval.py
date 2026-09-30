@@ -162,7 +162,7 @@ def test_notebook_stage_f_cells_exist_and_f1_prints_the_table(tmp_path, capsys):
     nb = json.loads((TRAINING / "RootIQ_Training.ipynb").read_text(encoding="utf-8"))
     cells = ["".join(c["source"]) for c in nb["cells"]]
     titles = [c.split("\n")[0] for c in cells if c.startswith("#@title")]
-    assert [t.split(")")[0].replace("#@title ", "") for t in titles][-4:] == ["E1", "F1", "F2", "F3"]
+    assert [t.split(")")[0].replace("#@title ", "") for t in titles][-5:] == ["E1", "F1", "F2", "F3", "F4"]
     for c in cells:
         if c.startswith("#@title"):
             compile(c, "cell", "exec")
@@ -170,7 +170,11 @@ def test_notebook_stage_f_cells_exist_and_f1_prints_the_table(tmp_path, capsys):
     assert "rq_eval.record(" in d1 and "rq_eval.collect_errors(" in d1 and "rq_eval.save_errors(" in d1
     assert "kb_evaluate.answers[name] = answers" in next(c for c in cells if c.startswith("#@title C1)"))
     f3 = next(c for c in cells if c.startswith("#@title F3)"))
-    assert "rq_eval.collect_errors(" in f3 and "PeftModel.from_pretrained" in f3 and "torchao" in f3
+    assert "rq_eval.collect_errors(" in f3 and "rq_eval.load_adapter_model(" in f3 and "rq_eval.answer_batch(" in f3
+    import inspect
+
+    loader = inspect.getsource(me.load_adapter_model)
+    assert "PeftModel.from_pretrained" in loader and "torchao" in loader and "BitsAndBytesConfig" in loader       # the guard and the 4-bit base live in one shared helper
     f1 = next(c for c in cells if c.startswith("#@title F1)"))
     me.record(tmp_path / "reports", me.entries_from_report(_report(), kb_eval))
     exec(compile(f1, "F1", "exec"), {"ROOT": tmp_path})

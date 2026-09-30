@@ -26,7 +26,7 @@ HARD RULES (never break)
 
 STEP 0 — CHECKS (report, then continue without waiting unless something is wrong)
   a. GITHUB tab: note the newest commit on main (short hash). It should be c264b9f or newer.
-  b. COLAB tab: the file is RootIQ_Training.ipynb and has 28 cells. If it has fewer, or the tab was not opened from the GitHub link above, STOP and tell me.
+  b. COLAB tab: the file is RootIQ_Training.ipynb and has 29 cells. If it has fewer, or the tab was not opened from the GitHub link above, STOP and tell me.
   c. Left bar > Secrets: GROQ_API_KEY exists with Notebook access ON (do not open its value).
   d. Runtime > Change runtime type: GPU (L4 if offered, else T4). If you change it the session restarts. Then Runtime > Restart session (NOT "Disconnect and delete runtime") so the GPU memory is empty.
   e. DRIVE tab: list MyDrive/RootIQ_AI and its subfolders; note that models/merged/rootiq-network-v1-smoke (about 8 GB) exists; tell me how much Drive space is free if the page shows it.
@@ -39,7 +39,7 @@ STEP 1 — SET THE TWO SWITCHES (cell "1) Setup")
   The output must end with:  Workspace: /content/drive/MyDrive/RootIQ_AI | SMOKE = False
   If it says SMOKE = True, the edit did not take: fix it and rerun cell 1. Do not go on until it says False.
 
-STEP 2 — RUN THESE CELLS IN THIS ORDER (skip every cell not listed: not "2) Install", not A1, A2, E1, F2)
+STEP 2 — RUN THESE CELLS IN THIS ORDER (skip every cell not listed: not "2) Install", not A1, A2, E1, F2, F3, F4)
   cell 3   "3) Get the RootIQ code"   -> "RootIQ code: /content/frast1 | commit: <hash> | features: 6 | knowledge base: 43 vendors, 25 problems".
                                           The hash must equal the GITHUB commit from step 0a. If not, or if it prints "git pull failed", STOP.
                                           If a later cell says "No module named X": run "2) Install libraries" once, then rerun cells 1 and 3.
