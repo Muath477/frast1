@@ -134,7 +134,7 @@ cells = ["".join(x["source"]) for x in nb["cells"]]
 c3 = next(s for s in cells if s.startswith("#@title 3)"))
 c2 = next(s for s in cells if s.startswith("#@title C2)"))
 check("notebook clones the user's fork (branch main), never the original repository", 'Muath477/frast1.git", "main"' in c3 and "iksasa15/frast1" not in "".join(cells))
-check("notebook has 27 cells (with Stage F) and is committed without outputs", len(cells) == 27 and all(not x.get("outputs") for x in nb["cells"] if x["cell_type"] == "code"))
+check("notebook has 28 cells (with Stage F) and is committed without outputs", len(cells) == 28 and all(not x.get("outputs") for x in nb["cells"] if x["cell_type"] == "code"))
 check("notebook C2 uses warmup_steps (newer transformers removed warmup_ratio)", "warmup_steps=WARMUP" in c2 and "warmup_ratio=" not in c2)
 manifest = json.loads(read("training/data/generated/manifest.json"))
 check("training data manifest carries the knowledge-base fingerprint", bool(manifest.get("kb_fingerprint")))

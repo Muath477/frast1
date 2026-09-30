@@ -26,7 +26,7 @@ HARD RULES (never break)
 
 STEP 0 — CHECKS (report, then continue without waiting unless something is wrong)
   a. GITHUB tab: note the newest commit on main (short hash). It should be c264b9f or newer.
-  b. COLAB tab: the file is RootIQ_Training.ipynb and has 27 cells. If it has fewer, or the tab was not opened from the GitHub link above, STOP and tell me.
+  b. COLAB tab: the file is RootIQ_Training.ipynb and has 28 cells. If it has fewer, or the tab was not opened from the GitHub link above, STOP and tell me.
   c. Left bar > Secrets: GROQ_API_KEY exists with Notebook access ON (do not open its value).
   d. Runtime > Change runtime type: GPU (L4 if offered, else T4). If you change it the session restarts. Then Runtime > Restart session (NOT "Disconnect and delete runtime") so the GPU memory is empty.
   e. DRIVE tab: list MyDrive/RootIQ_AI and its subfolders; note that models/merged/rootiq-network-v1-smoke (about 8 GB) exists; tell me how much Drive space is free if the page shows it.
@@ -59,12 +59,13 @@ STEP 2 — RUN THESE CELLS IN THIS ORDER (skip every cell not listed: not "2) In
                                           Projected time = total steps x seconds per step. If it is more than 8 hours, PAUSE and tell me the numbers before going on (I may switch to L4 or cut the data).
                                           Otherwise keep going. Check about every 60-90 seconds, send me a one-line message about every 20 minutes (step, loss, elapsed).
                                           It ends with "LoRA adapter saved to .../rootiq-network-v1-lora | checkpoints: rootiq-network-v1-<8 hex chars>" (the name has NO "-smoke").
-  D1       evaluation + decision          -> report JSON, the BEFORE -> AFTER table, every kb_rules value, and "=== DECISION: SHIP / DO NOT SHIP ===".
+  D1       evaluation + decision          -> report JSON, the BEFORE -> AFTER table, every kb_rules value, and "=== DECISION: SHIP / DO NOT SHIP ===",
+                                          then "Mistakes of the tuned model": every UNSAFE command in full and, per task, the first rows that failed. Paste that whole list into your report unchanged.
   F1       accuracy of every run          -> paste the table into your report unchanged. The new rows are named rootiq-network-v1 (no -smoke).
 
 STEP 3 — CHECK DRIVE (read-only) AND REPORT
   Refresh the DRIVE tab and confirm, with non-zero sizes: data/train.jsonl, val.jsonl, eval_grounded.jsonl, kb_test_seen.jsonl, kb_test_unseen.jsonl, reports/eval_report.json,
-  reports/history.jsonl, models/rootiq-network-v1-lora/ and checkpoints/rootiq-network-v1-<hash>/. Open reports/eval_report.json in the preview: its "decision" and numbers must match D1's output.
+  reports/history.jsonl, reports/errors_rootiq-network-v1_<date>.json, models/rootiq-network-v1-lora/ and checkpoints/rootiq-network-v1-<hash>/. Open reports/eval_report.json in the preview: its "decision" and numbers must match D1's output.
   Then send the FINAL REPORT (format below) and STOP. Do NOT export. Wait for my decision.
 
 ALLOWED EDITS (everything else needs my approval)

@@ -224,3 +224,69 @@ def report_text(reports_dir) -> str:
     if smoke_only:
         notes.append("Every row so far is a SMOKE run (tiny data, 20 steps): it proves the pipeline works, not that the model is good.")
     return "Vendor knowledge, CCNA and grounding, every run:\n\n" + table(entries) + "\n\n" + "\n".join(notes) + "\n\n" + anomaly_text(reports_dir)
+
+
+# ---------------------------------------------------------------- why a run fails (cell F3, and cell D1 after every evaluation)
+def collect_errors(rows: list[dict], answers: list[str], kb_eval, per_task_limit: int = 8) -> dict:
+    """The vendor-knowledge rows the score did not pass: the question, what was expected, what the model said, and why (fields, invented or unsafe commands)."""
+    assert len(rows) == len(answers), "one answer per row"
+    kb = kb_eval.get_kb()
+    known = kb_eval._Known(kb)
+    by_task: dict = {}
+    unsafe: list = []
+    failures: dict = {}
+    for row, ans in zip(rows, answers):
+        s = kb_eval.score_row(row, ans, kb, known)
+        task = row["task"]
+        st = by_task.setdefault(task, {"n": 0, "failed": 0})
+        st["n"] += 1
+        item = {"task": task, "vendor": row.get("vendor"), "lang": row.get("lang"), "question": row["messages"][1]["content"][:400],
+                "expected": row["messages"][2]["content"][:400], "answer": (ans or "")[:600]}
+        if s.get("fields") and not s.get("ok"):
+            gold = row["meta"]["gold"]
+            got = kb_eval.extract_json(ans) or {}
+            item["field_diff"] = {f: {"expected": gold.get(f), "got": got.get(f)} for f, good in s["fields"].items() if not good}
+        if s.get("invented"):
+            item["invented"] = s["invented"]
+        if s.get("unsafe"):
+            item["unsafe"] = s["unsafe"]
+            unsafe.append(item)
+        if not s["ok"]:
+            st["failed"] += 1
+            bucket = failures.setdefault(task, [])
+            if len(bucket) < per_task_limit:
+                bucket.append(item)
+    return {"n": len(rows), "by_task": by_task, "unsafe": unsafe, "failures": failures}
+
+
+def errors_text(errors: dict, max_items: int = 4) -> str:
+    """A readable list of the mistakes: worst tasks first, every unsafe command in full, field-by-field differences for identify / syslog."""
+    out: list[str] = []
+    for split, e in errors.items():
+        out.append(f"=== {split}: {e['n']} rows ===")
+        for task, st in sorted(e["by_task"].items(), key=lambda kv: (-kv[1]["failed"] / max(kv[1]["n"], 1), kv[0])):
+            out.append(f"  {task:22s} failed {st['failed']} of {st['n']}")
+        if e["unsafe"]:
+            out.append("  -- UNSAFE: change commands that are not approved fixes (must be 0) --")
+            for it in e["unsafe"][:max_items * 2]:
+                out.append(f"  [{it['task']} | {it['vendor']}] {it['unsafe']}\n      question: {it['question'][:200]!r}\n      answer:   {it['answer'][:300]!r}")
+        for task, items in e["failures"].items():
+            out.append(f"  -- {task}: first mistakes --")
+            for it in items[:max_items]:
+                out.append(f"  [{it['vendor']} | {it['lang']}] {it['question'][:140]!r}")
+                if it.get("field_diff"):
+                    out.append("      fields: " + "; ".join(f"{f}: expected {d['expected']!r}, got {d['got']!r}" for f, d in it["field_diff"].items()))
+                else:
+                    out.append(f"      expected: {it['expected'][:160]!r}\n      answer:   {it['answer'][:160]!r}")
+                if it.get("invented"):
+                    out.append(f"      commands not in the knowledge base: {it['invented'][:5]}")
+        out.append("")
+    return "\n".join(out)
+
+
+def save_errors(reports_dir, name: str, errors: dict) -> Path:
+    reports_dir = Path(reports_dir)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    path = reports_dir / f"errors_{name}.json"
+    path.write_text(json.dumps(errors, ensure_ascii=False, indent=1), encoding="utf-8")
+    return path
