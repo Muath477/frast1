@@ -156,12 +156,75 @@ def test_grade_summarize_and_the_text_report(tmp_path):
         ge.grade(exam, answers[:2], lambda i, a: {"score": 2}, kb_eval)
 
 
-def test_notebook_f4_uses_the_secret_name_without_spaces_and_only_measures():
+GROQ_KEY = "gsk_THIS_IS_A_FAKE_GROQ_KEY_0123456789"
+
+
+class FakeGroq:
+    def __init__(self, marks=None, script=None):
+        self.posts, self.marks, self.script = [], list(marks or []), list(script or [])
+
+    def post(self, url, headers, json, timeout):
+        self.posts.append((url, headers, json))
+        if self.script:
+            return self.script.pop(0)
+        prompt = json["messages"][-1]["content"]
+        if "exam questions" in prompt:
+            items = [{"question": f"groq question number {i} about routing?", "vendor": None, "must_include": ["x"], "must_not": []} for i in range(6)]
+            body = __import__("json").dumps(items)
+        else:
+            body = __import__("json").dumps({"score": self.marks.pop(0) if self.marks else 2, "missing": [], "violations": [], "comment": "ok"})
+        return Resp(200, {"choices": [{"message": {"content": body}}]})
+
+
+def groq_for(api, tmp_path=None):
+    return ge.GroqClient(GROQ_KEY, cache=(tmp_path / "groq.jsonl") if tmp_path else None, post=api.post, sleep=lambda s: None)
+
+
+def test_groq_client_uses_a_bearer_header_retries_caches_and_never_stores_the_key(tmp_path):
+    api = FakeGroq(script=[Resp(429, headers={"retry-after": "1"}), Resp(200, {"choices": [{"message": {"content": '{"a": 1}'}}]})])
+    c = groq_for(api, tmp_path)
+    assert c.name == "groq" and c.generate("hello", system="be brief") == '{"a": 1}' and len(api.posts) == 2
+    url, headers, body = api.posts[-1]
+    assert headers["authorization"] == f"Bearer {GROQ_KEY}" and GROQ_KEY not in url and GROQ_KEY not in json.dumps(body)
+    assert body["model"] == "openai/gpt-oss-120b" and body["messages"][0] == {"role": "system", "content": "be brief"} and "Return only JSON" in body["messages"][-1]["content"]
+    assert c.generate("hello", system="be brief") == '{"a": 1}' and len(api.posts) == 2 and GROQ_KEY not in (tmp_path / "groq.jsonl").read_text(encoding="utf-8") and GROQ_KEY not in repr(c)
+    with pytest.raises(ValueError, match="GROQ_API_KEY"):
+        ge.GroqClient("")
+    with pytest.raises(RuntimeError, match="not found"):
+        groq_for(FakeGroq(script=[Resp(404)])).generate("x")
+    assert groq_for(FakeGroq(script=[Resp(200, {"choices": []})])).generate("x") is None
+
+
+def test_two_clients_share_the_questions_and_both_grade_every_answer(tmp_path):
+    gem, groq = client_for(FakeApi(), model="gemini-2.5-flash"), groq_for(FakeGroq(marks=[2, 1, 0, 0]))
+    exam = ge.build_exam([gem, groq], per_domain=4, path=tmp_path / "exam.jsonl")
+    assert {q["author"] for q in exam} == {"gemini", "groq"} and {q["domain"] for q in exam} == set(ge.DOMAINS)
+    assert len({q["id"] for q in exam}) == len(exam)
+    for domain in ge.DOMAINS:
+        assert {q["author"] for q in exam if q["domain"] == domain} == {"gemini", "groq"}          # every field is written by both
+
+    items = [{"id": str(i), "domain": "commands", "lang": "en", "vendor": None, "question": f"question {i}?", "must_include": ["x"], "must_not": []} for i in range(3)]
+    g2, r2 = client_for(FakeApi(script=[_text('{"score": 2, "comment": "good"}'), _text('{"score": 1, "comment": "partly"}'), _text('{"score": 0, "comment": "no"}')]), model="m"), groq_for(FakeGroq(marks=[2, 0, 0]))
+    verdicts = [ge.combined_judge([g2, r2])(it, "an answer") for it in items]
+    assert [v["score"] for v in verdicts] == [2.0, 0.5, 0.0] and [v["agree"] for v in verdicts] == [True, False, True]
+    assert verdicts[1]["scores"] == {"gemini": 1, "groq": 0} and "gemini: partly" in verdicts[1]["comment"] and "groq: ok" in verdicts[1]["comment"]
+    assert ge.combined_judge([client_for(FakeApi(script=[_text("nonsense")]), model="m")])(items[0], "x")["scores"] == {}          # nothing gradable: ungraded, not a crash
+
+    queue = iter(verdicts)
+    results = ge.grade(items, ["a", "b", "c"], lambda item, answer: next(queue), kb_eval)
+    s = ge.summarize(results)
+    assert s["by_judge"] == {"gemini": 50.0, "groq": 33.3} and s["overall"]["judges_differ_pct"] == 33.3 and s["overall"]["score_pct"] == 41.7
+    text = ge.exam_text(s, results)
+    assert "judges: gemini 50.0/100, groq 33.3/100" in text and "different marks on 33.3%" in text
+
+
+def test_notebook_f4_uses_secret_names_without_spaces_two_examiners_and_only_measures():
     nb = json.loads((TRAINING / "RootIQ_Training.ipynb").read_text(encoding="utf-8"))
     cells = ["".join(c["source"]) for c in nb["cells"]]
     f4 = next(c for c in cells if c.startswith("#@title F4)"))
     compile(f4, "F4", "exec")
-    assert 'secret("GEMINI_API_KEY")' in f4 and "rq_gem.grade(" in f4 and "load_adapter_model" in f4 and "rq_gem.judge(" in f4
+    assert 'optional_secret("GEMINI_API_KEY")' in f4 and 'optional_secret("GROQ_API_KEY")' in f4 and "rq_gem.GroqClient(" in f4 and "rq_gem.combined_judge(clients)" in f4
+    assert "rq_gem.grade(" in f4 and "load_adapter_model" in f4 and "input(" not in f4 and "getpass" not in f4       # never stops to ask for a key
     assert "train" not in f4.lower().replace("trained", "").replace("training", "")            # the exam never writes training data
     f3 = next(c for c in cells if c.startswith("#@title F3)"))
     assert "load_adapter_model" in f3 and "collect_errors" in f3
