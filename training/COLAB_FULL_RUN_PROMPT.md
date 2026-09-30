@@ -43,7 +43,7 @@ STEP 2 — RUN THESE CELLS IN THIS ORDER (skip every cell not listed: not "2) In
   cell 3   "3) Get the RootIQ code"   -> "RootIQ code: /content/frast1 | commit: <hash> | features: 6 | knowledge base: 43 vendors, 25 problems".
                                           The hash must equal the GITHUB commit from step 0a. If not, or if it prints "git pull failed", STOP.
                                           If a later cell says "No module named X": run "2) Install libraries" once, then rerun cells 1 and 3.
-  B0       vendor knowledge from the repo -> "vendor-KB rows: {'train': 4077, 'val': 211, 'test_seen': 213, 'test_unseen': 227}" (thousands, not the ~100 of the smoke run).
+  B0       vendor knowledge from the repo -> "vendor-KB rows: {'train': 4425, 'val': 228, 'test_seen': 248, 'test_unseen': 251}" (thousands, not the ~100 of the smoke run).
   B1       Groq teacher                   -> "Teacher check: <short answer about OSPF>". A secret error -> STOP (rule 1).
   B2       tutor data (slow)              -> "tutor examples kept: X / 110".
   B3       grounded tasks (slow)          -> "template-grounded examples: 2640 (rejected by the grounding check: 0)" and "teacher paraphrases kept: X / 150" (a low X is normal).

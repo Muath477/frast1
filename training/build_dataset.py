@@ -27,8 +27,9 @@ sys.path.insert(0, str(HERE.parent / "backend"))
 from app.knowledge import get_kb  # noqa: E402
 from app.knowledge.loader import DATA_DIR  # noqa: E402
 
-GEN_VERSION = 1
+GEN_VERSION = 2            # 2: more sysObjectID-only identify rows, and "no curated rollback" answers for every OS family without curated notes (first full run: identify 67%, one invented rollback command)
 SEED = 20260929
+PEN_ONLY_SAMPLES = 6       # identify rows per vendor that show only `sysObjectID: 1.3.6.1.4.1.<enterprise number>...` (was 2)
 OUT_DIR = HERE / "data" / "generated"
 SPLITS = ("train", "val", "test_seen", "test_unseen")
 
@@ -144,7 +145,7 @@ def gen_identify(kb, rng):
             hint = f"{v['name']} {o['name']}"
             emit(f"identify/{vid}/{o['id']}/hint", vid, f"hint: {hint}", kb.identify(hint=hint))
         if pen:
-            for _ in range(2):
+            for _ in range(PEN_ONLY_SAMPLES):        # the enterprise number alone is the clue a device gives most often: the model must learn every vendor's number
                 oid = f"1.3.6.1.4.1.{pen}.1.{rng.randint(1, 3000)}"
                 emit(f"identify/{vid}/pen", vid, f"sysObjectID: {oid}", kb.identify(sys_object_id=oid))
         emit(f"identify/{vid}/name", vid, f"hint: {v['name']}", kb.identify(hint=v["name"]))
@@ -489,6 +490,14 @@ def gen_config(kb, rng):
             rows.append(row("config_model", lang, vid, f"cfg-abstain/{vid}/{os_id}", QS[lang].format(v=v["name"], o=o["name"]),
                             kb.describe_config(vid, os_id, lang == "ar"),
                             {"vendor": vid, "os": os_id, "topic": "save", "abstain": True}))
+    # The same for "how do I undo a risky change": without curated notes the honest answer is "no curated rollback", never a guessed command
+    # (the first full run answered `undo <change>` for Huawei, an invented change command: the only unsafe answer of the whole evaluation).
+    for vid, os_id in unmodeled:
+        v, o = kb.vendor(vid), kb.os_family(vid, os_id)
+        for lang in ("en", "ar"):
+            rows.append(row("config_model", lang, vid, f"cfg-abstain-rollback/{vid}/{os_id}", QR[lang].format(v=v["name"], o=o["name"]),
+                            NO_ROLLBACK[lang].format(head=f"{v['name']} ({o['name']})"),
+                            {"vendor": vid, "os": os_id, "topic": "rollback", "abstain": True}))
     return rows
 
 

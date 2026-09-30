@@ -110,7 +110,8 @@ def test_all_runs_table_lists_every_run_in_time_order_and_includes_the_latest_re
     assert [(e["run"], e["kind"]) for e in hist] == [("rootiq-network-v1-smoke", "base"), ("rootiq-network-v1-smoke", "tuned"), ("rootiq-network-v1-smoke", "teacher"),
                                                      ("rootiq-network-v1", "base"), ("rootiq-network-v1", "tuned"), ("rootiq-network-v1", "merged")]
     text = me.report_text(tmp_path)
-    assert "0.45 (n=40)" in text and "0.93 (n=15)" in text and "SHIP" in text and "merged" in text and "teacher" in text
+    assert "45.0 (n=40)" in text and "93.3 (n=15)" in text and "SHIP" in text and "merged" in text and "teacher" in text
+    assert "out of 100" in text and "0.45" not in text          # every score is shown out of 100, never as a 0..1 decimal
     assert "SMOKE run" not in text                       # one of the runs is a full run, so the smoke warning is not shown
     only_smoke = tmp_path / "s"
     me.record(only_smoke, me.entries_from_report(old, kb_eval))
@@ -125,7 +126,7 @@ def test_report_text_without_any_run_and_with_the_anomaly_model(tmp_path):
     (tmp_path / "anomaly_report.json").write_text(json.dumps(meta), encoding="utf-8")
     me.record(tmp_path, me.entries_from_report(_report(), kb_eval))
     text = me.report_text(tmp_path)
-    assert "AUC 0.97" in text and "link-congestion" in text and "static thresholds 0.02" in text
+    assert "AUC 97.0/100" in text and "link-congestion" in text and "static thresholds 2.0%" in text and "detects 80.0%" in text
 
 
 def test_evaluate_model_measures_a_model_from_the_files_on_drive(tmp_path):
@@ -168,6 +169,9 @@ def test_notebook_stage_f_cells_exist_and_f1_prints_the_table(tmp_path, capsys):
             compile(c, "cell", "exec")
     d1 = next(c for c in cells if c.startswith("#@title D1)"))
     assert "rq_eval.record(" in d1 and "rq_eval.collect_errors(" in d1 and "rq_eval.save_errors(" in d1
+    assert "rq_eval.headline_pct(" in d1                                     # the before -> after lines are out of 100 too
+    assert me.headline_pct({"identify_exact": 0.6667, "syslog_exact": None, "unsafe_command_count": 1, "invented_command_rate": 0.18}) == {
+        "identify_exact": "66.7", "syslog_exact": "-", "unsafe_command_count": 1, "invented_command_rate": "18.0"}
     assert "kb_evaluate.answers[name] = answers" in next(c for c in cells if c.startswith("#@title C1)"))
     f3 = next(c for c in cells if c.startswith("#@title F3)"))
     assert "rq_eval.collect_errors(" in f3 and "rq_eval.load_adapter_model(" in f3 and "rq_eval.answer_batch(" in f3
@@ -179,7 +183,7 @@ def test_notebook_stage_f_cells_exist_and_f1_prints_the_table(tmp_path, capsys):
     me.record(tmp_path / "reports", me.entries_from_report(_report(), kb_eval))
     exec(compile(f1, "F1", "exec"), {"ROOT": tmp_path})
     out = capsys.readouterr().out
-    assert "rootiq-network-v1-smoke" in out and "0.60 (n=40)" in out and "teacher" in out
+    assert "rootiq-network-v1-smoke" in out and "60.0 (n=40)" in out and "teacher" in out and "CCNA /100" in out
 
 
 def test_collect_errors_lists_wrong_fields_invented_and_unsafe_commands(tmp_path):

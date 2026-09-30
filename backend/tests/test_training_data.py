@@ -264,6 +264,35 @@ def test_notebook_cpu_cells_run_end_to_end_in_smoke_mode(tmp_path, monkeypatch):
     assert len(ns["kb_seen_rows"]) > 0 and len(ns["kb_unseen_rows"]) > 0
 
 
+def test_b5_without_b4_trains_on_own_data_only_or_says_to_run_b4(tmp_path, monkeypatch, capsys):
+    """B4 is optional, but B5 used to die with NameError: external_rows when B4 had not run in the session."""
+    import subprocess
+
+    monkeypatch.setenv("ROOTIQ_AI_HOME", str(tmp_path / "ai"))
+    monkeypatch.setenv("ROOTIQ_REPO", str(TRAINING.parent))
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)
+    nb, cells = _cells()
+    ns: dict = {"__name__": "notebook"}
+    old_path = list(sys.path)
+    try:
+        for prefix in ("#@title 1)", "#@title 3)", "#@title B0)"):
+            exec(compile(_cell(cells, prefix), prefix, "exec"), ns)
+        ns["teacher"] = lambda *a, **k: None
+        for prefix in ("#@title B2)", "#@title B3)"):
+            exec(compile(_cell(cells, prefix), prefix, "exec"), ns)
+        assert "external_rows" not in ns                                     # B4 was skipped
+        wants_outside_data = dict(ns, INCLUDE_EXTERNAL=True)
+        with pytest.raises(AssertionError, match="run B4 first"):
+            exec(compile(_cell(cells, "#@title B5)"), "B5", "exec"), wants_outside_data)
+        assert "external_rows" not in wants_outside_data                      # it did not quietly train without the outside data it was asked for
+        ns["INCLUDE_EXTERNAL"] = False
+        exec(compile(_cell(cells, "#@title B5)"), "B5", "exec"), ns)
+    finally:
+        sys.path[:] = old_path
+    assert ns["external_rows"] == [] and "training on our own data only" in capsys.readouterr().out
+    assert (tmp_path / "ai" / "data" / "train.jsonl").stat().st_size > 0
+
+
 def test_gpu_cells_at_least_compile_and_the_ship_rule_behaves(tmp_path):
     """C1/C2/D1/E1 need a GPU (not run here). They must compile, and D1's decision logic is exercised with stand-ins."""
     from types import SimpleNamespace
