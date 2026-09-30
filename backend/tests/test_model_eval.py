@@ -186,6 +186,29 @@ def test_notebook_stage_f_cells_exist_and_f1_prints_the_table(tmp_path, capsys):
     assert "rootiq-network-v1-smoke" in out and "60.0 (n=40)" in out and "teacher" in out and "CCNA /100" in out
 
 
+def test_c2_keeps_the_adapter_of_a_previous_run_trained_on_other_data(tmp_path):
+    """Every run saves to models/<run>-lora: a new run on new data must not destroy the old adapter (it is the baseline for an honest before/after)."""
+    adapter = tmp_path / "models" / "rootiq-network-v1-lora"
+    assert me.archive_previous_adapter(adapter, "aaaa1111") is None                  # nothing saved yet
+    adapter.mkdir(parents=True)
+    (adapter / "adapter_model.safetensors").write_bytes(b"old weights")
+    (adapter / "adapter_config.json").write_text("{}", encoding="utf-8")
+    kept = me.archive_previous_adapter(adapter, "bbbb2222")                          # saved before rootiq_run.json existed: other data, kept
+    assert kept is not None and kept.name.startswith("rootiq-network-v1-lora-before-") and not adapter.exists()
+    assert (kept / "adapter_model.safetensors").read_bytes() == b"old weights" and (kept / "adapter_config.json").exists()
+
+    adapter.mkdir()
+    (adapter / "adapter_model.safetensors").write_bytes(b"new weights")
+    me.stamp_adapter(adapter, "bbbb2222", run="rootiq-network-v1", steps=1134)
+    assert json.loads((adapter / me.RUN_FILE).read_text(encoding="utf-8"))["data_tag"] == "bbbb2222"
+    assert me.archive_previous_adapter(adapter, "bbbb2222") is None and (adapter / "adapter_model.safetensors").read_bytes() == b"new weights"   # the same run, finished again: overwritten, not duplicated
+    kept2 = me.archive_previous_adapter(adapter, "cccc3333")                         # new data again: the second adapter is kept too, under another name
+    assert kept2 is not None and kept2 != kept and (kept / "adapter_model.safetensors").exists() and (kept2 / "adapter_model.safetensors").read_bytes() == b"new weights"
+    nb = json.loads((TRAINING / "RootIQ_Training.ipynb").read_text(encoding="utf-8"))
+    c2 = next("".join(c["source"]) for c in nb["cells"] if "".join(c["source"]).startswith("#@title C2)"))
+    assert "rq_eval.archive_previous_adapter(ADAPTER, DATA_TAG)" in c2 and c2.index("archive_previous_adapter") < c2.index("save_pretrained") and "rq_eval.stamp_adapter(" in c2
+
+
 def test_collect_errors_lists_wrong_fields_invented_and_unsafe_commands(tmp_path):
     """The mistake list that explains a failed rule: which rows, which fields, which commands."""
     rows = me.cap_per_task(_rows("test_seen"), 4, 21)

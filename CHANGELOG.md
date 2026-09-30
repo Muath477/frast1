@@ -3,6 +3,11 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Cell C2 keeps the adapter of the previous run
+- C2 saves every run to `models/<run>-lora`, so the retraining on the new data would have overwritten the first full run's adapter. `model_eval.archive_previous_adapter` now moves an adapter trained on other data to `<folder>-before-<date>` first, and `stamp_adapter` writes `rootiq_run.json` (the data fingerprint) next to every saved adapter; finishing the same run again overwrites it instead of duplicating it. Checkpoints were already separate per data fingerprint, so the new data starts a fresh run and never resumes the old one.
+- The old adapter can be measured with F3 or F4 on the new tests (`ADAPTER_NAME`) for an honest before/after: the old tests are unchanged and the new rows were never in its training data.
+- Verified: 312 backend tests pass (1 new: keeping, not duplicating, and naming of archived adapters; C2 calls it before `save_pretrained`). The notebook on the fork, the Desktop copy and its Google Drive copy carry the same cells.
+
 ## The user's resource pack (`RootIQ_Resources.zip`): what was checked and what came of it
 - `docs/REFERENCES.md` (new, linked from `docs/README.md`): the 11 papers of the pack with their arXiv numbers **checked against arXiv's own titles** (all 11 matched), how each relates to the project, and what was found about the datasets. Abstracts and PDFs are not copied.
 - `training/catalog/OTHER_SOURCES.md` and `DATASET_SCOUT_PROMPT.md`: Loghub (research/academic-only licence, server and HPC logs, not sanitized), `arbml/CIDAR` (Apache tag, but built from Alpagasus, a subset of CC BY-NC Alpaca, translated with ChatGPT), `NetoAISolutions/NetBench` (gated, could not be read) and `SOTAagi2030/Juniper-Catalog-Abstracts` (about an oral-history archive, not Juniper) are recorded as **not used**, with the reason.

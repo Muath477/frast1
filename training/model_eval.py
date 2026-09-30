@@ -13,9 +13,12 @@ from __future__ import annotations
 import json
 import random
 import re
+import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 HISTORY = "history.jsonl"
+RUN_FILE = "rootiq_run.json"      # written next to every adapter C2 saves: which training data it was trained on
 MCQ_SYSTEM = "You are a CCNA exam expert. Reply with ONLY the letter(s) of the correct answer(s), for example B or DF."
 AR_CHARS = re.compile(r"[؀-ۿ]")
 REFUSAL = re.compile(r"(?i)(as an ai|i cannot|i can't help|لا أستطيع|لا يمكنني)")
@@ -163,6 +166,34 @@ def load_history(reports_dir, include_latest: bool = True) -> list[dict]:
         entries += [e for e in entries_from_report(json.loads(latest.read_text(encoding="utf-8"))) if _key(e) not in have]
     order = {"base": 0, "tuned": 1, "merged": 2, "teacher": 3}     # within one run: untrained, trained, exported, then the Groq reference
     return sorted(entries, key=lambda e: (e.get("when") or "", e.get("run") or "", order.get(e.get("kind"), 9)))
+
+
+# ---------------------------------------------------------------- keep the adapter of the previous run (cell C2)
+def archive_previous_adapter(adapter, data_tag: str) -> Path | None:
+    """C2 saves every run to the same folder (models/<run>-lora). Before it does, move an adapter trained on OTHER data to `<folder>-before-<date>` next to it, so a new
+    run never destroys the old one (measure both with F3 / F4 on the same new tests to see what the new data changed). Returns the new folder, or None when there was
+    nothing to keep: no adapter yet, or the same data (the same run being finished again)."""
+    adapter = Path(adapter)
+    weights = adapter / "adapter_model.safetensors"
+    if not weights.exists():
+        return None
+    try:
+        if json.loads((adapter / RUN_FILE).read_text(encoding="utf-8")).get("data_tag") == data_tag:
+            return None
+    except (OSError, ValueError):
+        pass                                                        # an adapter saved before this file existed: other data, keep it
+    stamp = datetime.fromtimestamp(weights.stat().st_mtime, tz=timezone.utc).strftime("%Y%m%d-%H%M")
+    dest, n = adapter.with_name(f"{adapter.name}-before-{stamp}"), 2
+    while dest.exists():
+        dest, n = adapter.with_name(f"{adapter.name}-before-{stamp}-{n}"), n + 1
+    shutil.move(str(adapter), str(dest))
+    return dest
+
+
+def stamp_adapter(adapter, data_tag: str, **extra) -> None:
+    """Record next to the saved adapter which training data it came from (read by `archive_previous_adapter` in the next run)."""
+    Path(adapter).mkdir(parents=True, exist_ok=True)
+    (Path(adapter) / RUN_FILE).write_text(json.dumps({"data_tag": data_tag, "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), **extra}, indent=1), encoding="utf-8")
 
 
 # ---------------------------------------------------------------- the report you read
