@@ -3,6 +3,13 @@
 Everything below is on top of the team's `main` (`db7913c`). Newest first. Each entry says **what changed, why, and what was verified**.
 (الفرع `my-edits` فقط؛ لا شيء هنا على `main`.)
 
+## Why does a run fail? Mistake lists in D1 and the new cell F3
+- The first full run (2026-09-30) improved vendor knowledge strongly but ended `DO NOT SHIP`: identify 0.67 below the 0.80 floor and one unsafe command. The evaluation only kept counts, so nobody could see which command or which rows. Results and reasons: `docs/AI_TRAINING.md` §10.
+- `training/model_eval.py`: `collect_errors` (per row: question, expected answer, given answer, wrong fields, invented commands, unsafe commands), `errors_text` (worst tasks first, every unsafe command in full, field-by-field differences for identify and syslog) and `save_errors`.
+- Cell C1 keeps the answers of every vendor-knowledge evaluation (`kb_evaluate.answers`); cell D1 prints "Mistakes of the tuned model" after the decision and saves `reports/errors_<run>_<time>.json`. The scoring and the ship rule are unchanged.
+- New cell F3 (`diagnose_run`): reloads a saved adapter on the 4-bit base model (with the same torchao guard as E1), answers the same test rows as D1 from the repository's generated files, and prints and saves the mistakes, so an earlier run can be examined without retraining. The notebook has 28 cells now.
+- Verified: 1 new test (identify answered with a wrong OS, a command answer with `reload` and `write erase` added, a perfect answer set; the text and the saved file) plus notebook wiring checks; 283 backend tests pass. The GPU part of F3 (loading the adapter) is verified only by the Colab run.
+
 ## Prompt 5: the full training run (`training/COLAB_FULL_RUN_PROMPT.md`)
 - After three smoke runs, one prompt for Claude in Chrome that runs only the FULL run on Colab: checks (commit, 27 cells, secret name, GPU, session restart), sets `SMOKE = False` and `INCLUDE_EXTERNAL = True` in cell 1 and verifies the printed line, runs exactly the cells B0 to F1 in order (skipping install, A1, A2, E1, F2) with the output each cell must print (row counts of the real data: train 4,077 KB rows, 2,640 grounded examples, 110 tutor examples, CCNA n = 343), measures the training step count and seconds per step and pauses if the projection is above 8 hours, then checks Drive read-only and reports. It never uses "Run all", never exports, never clicks the Drive permission dialog. Built after the smoke run in which C2 failed with `NameError: MODEL_NAME` (cells skipped) and after three "full" runs that were still SMOKE because the switch was not applied.
 

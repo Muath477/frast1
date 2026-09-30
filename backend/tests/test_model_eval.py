@@ -162,13 +162,45 @@ def test_notebook_stage_f_cells_exist_and_f1_prints_the_table(tmp_path, capsys):
     nb = json.loads((TRAINING / "RootIQ_Training.ipynb").read_text(encoding="utf-8"))
     cells = ["".join(c["source"]) for c in nb["cells"]]
     titles = [c.split("\n")[0] for c in cells if c.startswith("#@title")]
-    assert [t.split(")")[0].replace("#@title ", "") for t in titles][-3:] == ["E1", "F1", "F2"]
+    assert [t.split(")")[0].replace("#@title ", "") for t in titles][-4:] == ["E1", "F1", "F2", "F3"]
     for c in cells:
         if c.startswith("#@title"):
             compile(c, "cell", "exec")
-    assert "rq_eval.record(" in next(c for c in cells if c.startswith("#@title D1)"))
+    d1 = next(c for c in cells if c.startswith("#@title D1)"))
+    assert "rq_eval.record(" in d1 and "rq_eval.collect_errors(" in d1 and "rq_eval.save_errors(" in d1
+    assert "kb_evaluate.answers[name] = answers" in next(c for c in cells if c.startswith("#@title C1)"))
+    f3 = next(c for c in cells if c.startswith("#@title F3)"))
+    assert "rq_eval.collect_errors(" in f3 and "PeftModel.from_pretrained" in f3 and "torchao" in f3
     f1 = next(c for c in cells if c.startswith("#@title F1)"))
     me.record(tmp_path / "reports", me.entries_from_report(_report(), kb_eval))
     exec(compile(f1, "F1", "exec"), {"ROOT": tmp_path})
     out = capsys.readouterr().out
     assert "rootiq-network-v1-smoke" in out and "0.60 (n=40)" in out and "teacher" in out
+
+
+def test_collect_errors_lists_wrong_fields_invented_and_unsafe_commands(tmp_path):
+    """The mistake list that explains a failed rule: which rows, which fields, which commands."""
+    rows = me.cap_per_task(_rows("test_seen"), 4, 21)
+    gold = [r["messages"][2]["content"] for r in rows]
+    perfect = me.collect_errors(rows, gold, kb_eval)
+    assert perfect["n"] == len(rows) and not perfect["unsafe"] and not perfect["failures"]
+    assert all(st["failed"] == 0 for st in perfect["by_task"].values())
+
+    ident = next(i for i, r in enumerate(rows) if r["task"] == "identify")
+    wrong = json.loads(gold[ident])
+    wrong["os"] = "not-an-os"
+    risky = next(i for i, r in enumerate(rows) if r["task"] == "command_lookup" and r.get("vendor"))
+    answers = list(gold)
+    answers[ident] = json.dumps(wrong)
+    answers[risky] = gold[risky] + " Then run `reload` and `write erase`."
+    bad = me.collect_errors(rows, answers, kb_eval)
+
+    item = bad["failures"]["identify"][0]
+    assert item["field_diff"]["os"] == {"expected": json.loads(gold[ident])["os"], "got": "not-an-os"} and "vendor" not in item["field_diff"]
+    assert bad["by_task"]["identify"]["failed"] == 1
+    assert bad["unsafe"] and any("reload" in c for it in bad["unsafe"] for c in it["unsafe"])
+
+    text = me.errors_text({"seen": bad})
+    assert "UNSAFE" in text and "identify: first mistakes" in text and "not-an-os" in text and "=== seen:" in text
+    path = me.save_errors(tmp_path, "run-x", {"seen": bad})
+    assert path.name == "errors_run-x.json" and json.loads(path.read_text(encoding="utf-8"))["seen"]["n"] == len(rows)

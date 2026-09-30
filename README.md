@@ -51,14 +51,14 @@ Per-agent details: [`docs/AGENTS.md`](docs/AGENTS.md).
 | UI | Incident plan shows **Vendor diagnostics** and **Applying a change**; the Agents page lists all 16 agents | `frontend/src/components/incidents/VendorCommands.tsx` |
 | Training | `training/`: generated dataset (about 4.7k EN/AR examples, 10 tasks), offline evaluator, Hugging Face catalog, Colab notebook | [`training/README.md`](training/README.md) · [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) |
 | Mixed-vendor lab | Example topology: Cisco + Juniper vQFX + Arista vEOS + FortiGate-VM + Aruba AOS-CX | [`configs/topology.multivendor.example.json`](configs/topology.multivendor.example.json) |
-| Tests | 282 backend tests (151 before) | `cd backend && pytest -q` |
+| Tests | 283 backend tests (151 before) | `cd backend && pytest -q` |
 
 ### Honest limits
 
 - The knowledge base is **not exhaustive**: 5 vendors with full coverage, 7 partial, 31 identification-only. Devices are known by **family/series**, not by every SKU.
 - Commands and syslog patterns were written from general knowledge, not captured from real devices. Every vendor carries a confidence level; **Fortinet is the weakest**.
 - RootIQ shows vendor commands to the engineer and never pushes them to a device.
-- Training: the notebook ran end to end on Colab once in SMOKE mode (20 training steps: data, QLoRA, evaluation, merge and export to Drive); that only proves the pipeline works. The full run (`SMOKE = False`) has not been done, so there is no real accuracy result yet. First smoke numbers and the problems met on Colab: [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) §8–§9.
+- Training: the notebook ran end to end on Colab once in SMOKE mode (20 training steps: data, QLoRA, evaluation, merge and export to Drive); that only proves the pipeline works. A first full run (`SMOKE = False`, 2026-09-30) improved vendor knowledge a lot (syslog parsing 0.00 to 1.00, command lookup 0.25 to 0.92, invented commands 75% to 18%) but the strict ship rule still says DO NOT SHIP: identify accuracy 0.67 is below the 0.80 floor and one unsafe command was counted. Results, the problems met on Colab and how to see exactly which rows fail: [`docs/AI_TRAINING.md`](docs/AI_TRAINING.md) §8–§10.
 
 <div dir="rtl">
 
@@ -71,7 +71,7 @@ Per-agent details: [`docs/AGENTS.md`](docs/AGENTS.md).
 - **المساعد الذكي (Copilot):** يجيب عن الأوامر والمشاكل وحفظ الإعداد لعدة مصنّعين جنبًا إلى جنب، حرفيًا من القاعدة.
 - **الواجهة:** خطة الحادثة تعرض «Vendor diagnostics» و«Applying a change».
 - **التدريب:** مجلد `training/` فيه بيانات مولَّدة من القاعدة، ومقيّم آلي، وكتالوج Hugging Face، ودفتر Colab.
-- **الاختبارات:** 282 اختبارًا.
+- **الاختبارات:** 283 اختبارًا.
 
 **حدود صريحة:** القاعدة ليست شاملة (تغطية كاملة لخمسة مصنّعين فقط)، والأوامر لم تُلتقط من أجهزة حقيقية (Fortinet أضعفها ثقةً)، وRootIQ يعرض الأوامر للمهندس ولا ينفّذها.
 
@@ -220,7 +220,7 @@ Shift+1 uplink · Shift+2 DNS · Shift+3 server spike · Shift+R reset · Shift+
 ```powershell
 cd backend
 $env:ROOTIQ_MODE = 'sim'
-.\.venv\Scripts\python.exe -m pytest -q                        # 282 tests
+.\.venv\Scripts\python.exe -m pytest -q                        # 283 tests
 cd ..\frontend; npx tsc --noEmit; npx vitest run src           # type-check + unit tests
 cd ..; python training\build_dataset.py --check                # committed training data matches the knowledge base
 python scripts\audit_wiring.py                                 # runs the API on the multi-vendor topology; docs, counts, notebook and frontend agree with the code
