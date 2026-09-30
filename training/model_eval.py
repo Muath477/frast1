@@ -290,3 +290,51 @@ def save_errors(reports_dir, name: str, errors: dict) -> Path:
     path = reports_dir / f"errors_{name}.json"
     path.write_text(json.dumps(errors, ensure_ascii=False, indent=1), encoding="utf-8")
     return path
+
+
+# ---------------------------------------------------------------- reload a saved adapter (cells F3 and F4; needs a GPU)
+def load_adapter_model(adapter, *, in_colab: bool = True):
+    """Reload a saved LoRA adapter on its 4-bit base model, the model D1 measured. Returns (model, tokenizer)."""
+    import importlib.metadata as md
+    import subprocess
+    import sys
+
+    import torch
+    from packaging.version import Version
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+    adapter = Path(adapter)
+    assert adapter.exists(), f"no adapter at {adapter}: check the name with the DRIVE tab (models/)"
+    try:   # peft refuses a torchao older than 0.16 (Colab ships 0.10); this notebook does not use it
+        tao = Version(md.version("torchao"))
+    except md.PackageNotFoundError:
+        tao = None
+    if tao is not None and tao < Version("0.16.0"):
+        if not in_colab:
+            raise RuntimeError(f"torchao {tao} is older than peft accepts: run `pip uninstall torchao` in this environment, then try again.")
+        subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchao"], check=True)
+    from peft import PeftModel
+
+    base_id = json.loads((adapter / "adapter_config.json").read_text(encoding="utf-8"))["base_model_name_or_path"]
+    dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16      # the same choice as cell C1
+    tk = AutoTokenizer.from_pretrained(str(adapter))
+    if tk.pad_token is None:
+        tk.pad_token = tk.eos_token
+    tk.padding_side = "left"
+    bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=dtype, bnb_4bit_use_double_quant=True)
+    base = AutoModelForCausalLM.from_pretrained(base_id, quantization_config=bnb, device_map="auto")
+    return PeftModel.from_pretrained(base, str(adapter)).eval(), tk
+
+
+def answer_batch(model, tk, conversations: list, max_new_tokens: int = 256, batch_size: int = 8) -> list[str]:
+    """Greedy answers for many chat prompts at once (left padding), as in cell C1."""
+    import torch
+
+    outs: list[str] = []
+    with torch.no_grad():
+        for i in range(0, len(conversations), batch_size):
+            texts = [tk.apply_chat_template(c, tokenize=False, add_generation_prompt=True) for c in conversations[i:i + batch_size]]
+            enc = tk(texts, return_tensors="pt", padding=True).to(model.device)
+            gen = model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False, pad_token_id=tk.pad_token_id)
+            outs += [tk.decode(g[enc["input_ids"].shape[1]:], skip_special_tokens=True).strip() for g in gen]
+    return outs
