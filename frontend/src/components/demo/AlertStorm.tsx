@@ -19,7 +19,7 @@ export function AlertStorm({ incident, fill = false }: Props) {
 
   if (hasIncident) {
     return (
-      <div className={clsx('rq-panel rq-panel--quiet overflow-hidden', fill && 'flex min-h-0 flex-col')}>
+      <div className={clsx('rq-panel rq-panel--quiet overflow-hidden', fill && 'flex min-h-0 flex-1 flex-col')}>
         <div className="rq-slab-title">
           <span>Alert storm → one cause</span>
           {noise != null && (

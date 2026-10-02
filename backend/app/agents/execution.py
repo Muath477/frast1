@@ -22,6 +22,7 @@ class ExecutionAgent(Agent):
                 sim = self.rt.simulator_ref()
                 if sim:
                     sim.remediate()
+                    await sim.push_baseline()
                 result = {"executed": True, "dryRun": False, "target": "simulator", "commands": commands}
                 st.summary = f"simulator remediation for '{scenario}' triggered (approved by {action.get('decidedBy')})"
             elif not verdict.execute:

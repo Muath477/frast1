@@ -122,7 +122,26 @@ class Simulator:
         self.active, self.elapsed, self.recovering = scenario, 0.0, False
 
     def remediate(self):
+        """Engineer approved a fix: snap every metric to its healthy baseline immediately."""
         self.recovering = True
+        self.current = {(e, m): float(b) for e, _, m, _, b, _ in BASELINE}
+
+    async def push_baseline(self):
+        """Emit one clean baseline sample so the topology UI turns green without waiting for the next tick."""
+        now = datetime.now(timezone.utc)
+        for e, st, m, unit, base, _noise in BASELINE:
+            self.current[(e, m)] = float(base)
+            await self.pipeline.ingest(
+                Event(
+                    source_id=e,
+                    source_type=st,
+                    metric=m,
+                    value=round(float(base), 2),
+                    unit=unit,
+                    timestamp=now,
+                    metadata={"collector": "simulator", "recovery": True},
+                )
+            )
 
     def reset(self):
         self.active, self.recovering = None, False
@@ -130,7 +149,8 @@ class Simulator:
 
     def _target(self, e, m, base):
         if not self.active or self.recovering:
-            return base, 8.0
+            # Stay near baseline after remediation (map already snapped green).
+            return base, 1.0
         for off, te, tm, tgt, ramp in SCENARIOS[self.active]:
             if te == e and tm == m and self.elapsed >= off:
                 return tgt, ramp
