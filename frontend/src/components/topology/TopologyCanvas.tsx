@@ -70,7 +70,8 @@ export function TopologyCanvas({
         connectionMode={ConnectionMode.Loose}
         nodesConnectable={false}
         fitView
-        minZoom={0.25}
+        fitViewOptions={{ padding: 0.12, maxZoom: 1.1 }}
+        minZoom={0.2}
         maxZoom={2}
         onNodeClick={(_, n) => {
           if (n.type === 'zone') return;
@@ -94,14 +95,15 @@ export function TopologyCanvas({
         <MiniMap
           pannable
           zoomable
-          className="!bg-noc-panel"
+          position="bottom-right"
+          className="!bg-noc-panel !m-2"
           nodeColor={(n) => {
             if (n.type === 'zone') return 'transparent';
             const device = (n.data as { device?: { zone?: string; status?: string } })?.device;
             return zoneOf(device?.zone)?.color ?? cssToken('--text-3', '#8E97D4');
           }}
         />
-        <Controls />
+        <Controls position="bottom-left" className="!m-2" />
       </ReactFlow>
     </div>
   );
