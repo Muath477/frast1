@@ -49,14 +49,17 @@ export function IncidentPanel({ incident, onClose }: Props) {
   return (
     <AnimatePresence>
       {incident && (
-        <motion.aside
-          initial={{ x: 24, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 24, opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="rq-panel rq-panel--crit absolute end-0 top-0 z-20 flex h-full flex-col bg-noc-panel"
+        <div
+          className="absolute end-0 top-0 z-20 h-full"
           style={{ width: 'var(--incident-w)' }}
         >
+          <motion.aside
+            initial={{ x: 24, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 24, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="rq-panel rq-panel--crit flex h-full flex-col bg-noc-panel"
+          >
           <header className="border-b border-noc-line px-4 py-3">
             <div className="flex items-center justify-between gap-2">
               <div className="rq-mono text-sm text-[var(--brand-text)]">{incident.id}</div>
@@ -300,7 +303,8 @@ export function IncidentPanel({ incident, onClose }: Props) {
               ({incident.rawAlertCount} alerts → 1 incident)
             </div>
           </div>
-        </motion.aside>
+          </motion.aside>
+        </div>
       )}
     </AnimatePresence>
   );

@@ -39,63 +39,66 @@ body {
 }
 
 /* ---- Shape system: instrument / NOC panels (geometry only) ---- */
-.rq-panel {
-  position: relative;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  box-shadow: none;
-}
-.rq-panel::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 3px;
-  background: var(--brand);
-  pointer-events: none;
-}
-.rq-panel--warn::before { background: var(--warn); }
-.rq-panel--crit::before { background: var(--crit); }
-.rq-panel--ok::before { background: var(--ok); }
-.rq-panel--quiet::before { background: var(--border-strong); }
+/* Inside @layer components so Tailwind utilities (e.g. absolute) can override position. */
+@layer components {
+  .rq-panel {
+    position: relative;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .rq-panel::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 3px;
+    background: var(--brand);
+    pointer-events: none;
+  }
+  .rq-panel--warn::before { background: var(--warn); }
+  .rq-panel--crit::before { background: var(--crit); }
+  .rq-panel--ok::before { background: var(--ok); }
+  .rq-panel--quiet::before { background: var(--border-strong); }
 
-.rq-float {
-  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  box-shadow: none;
-}
+  .rq-float {
+    background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+  }
 
-.rq-slab-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-subtle);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-3);
-}
+  .rq-slab-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
 
-.rq-kicker {
-  font-size: 10px;
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-3);
-}
+  .rq-kicker {
+    font-size: 10px;
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
 
-.rq-metric {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--fw-medium);
-  line-height: 1;
+  .rq-metric {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-medium);
+    line-height: 1;
+  }
 }
 
 .rq-divider-v {
