@@ -128,9 +128,10 @@ class Simulator:
         self.current = {(e, m): float(b) for e, _, m, _, b, _ in BASELINE}
 
     async def push_baseline(self):
-        """Emit one clean baseline sample so the topology UI turns green without waiting for the next tick."""
+        """Emit clean baseline samples for demo metrics so the topology UI turns green now."""
         now = datetime.now(timezone.utc)
-        for e, st, m, unit, base, _noise in BASELINE:
+        # Campus fabric was never faulted — only push the demo spine metrics.
+        for e, st, m, unit, base, _noise in BASELINE_CORE:
             self.current[(e, m)] = float(base)
             await self.pipeline.ingest(
                 Event(
@@ -143,7 +144,6 @@ class Simulator:
                     metadata={"collector": "simulator", "recovery": True},
                 )
             )
-        # Paint the map green now — don't wait for the 1 Hz flush loop.
         dirty, self.pipeline.state.dirty = self.pipeline.state.dirty, set()
         for entity in dirty:
             await hub.broadcast(self.pipeline.state.kind(entity), self.pipeline.state.payload(entity))

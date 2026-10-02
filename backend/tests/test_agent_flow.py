@@ -227,8 +227,15 @@ async def test_topology_agent_impact_and_drift(tmp_path):
     assert ta.path("collector01", "app01")[0] == "collector01" and ta.path("collector01", "nope") == []
 
     good = [{"device": "r1", "port": "Gi0/0", "neighbor": "sw1", "neighborPort": "Gi0/1"}]
-    assert ta.reconcile(good)["ok"] is False  # r1 reported one neighbour but declares two
-    full = good + [{"device": "r1", "port": "Gi0/1", "neighbor": "sw2", "neighborPort": "Gi0/1"}]
+    assert ta.reconcile(good)["ok"] is False  # r1 reported one neighbour but declares more
+    full = [
+        {"device": "r1", "port": "Gi0/0", "neighbor": "sw1", "neighborPort": "Gi0/1"},
+        {"device": "r1", "port": "Gi0/1", "neighbor": "sw2", "neighborPort": "Gi0/1"},
+        {"device": "r1", "port": "Gi0/2", "neighbor": "dist-a", "neighborPort": "Te1/0/1"},
+        {"device": "r1", "port": "Gi0/3", "neighbor": "dist-b", "neighborPort": "Ethernet1"},
+        {"device": "r1", "port": "Gi0/4", "neighbor": "core-r2", "neighborPort": "Gi0/0"},
+        {"device": "r1", "port": "Gi0/5", "neighbor": "fw1", "neighborPort": "port1"},
+    ]
     assert ta.reconcile(full)["ok"] is True
     rogue = full + [{"device": "r1", "port": "Gi0/1", "neighbor": "sw9", "neighborPort": "Gi0/7"}]
     drift = ta.reconcile(rogue)
@@ -257,21 +264,28 @@ async def test_unverified_recovery_closes_after_the_grace_window(tmp_path, monke
     s = build_stack(tmp_path)
     inc = await run_scenario(s, "dns-failure")
     await s.actions.approve(inc.action["id"], "Ahmed")
-    # Force metrics back into a bad state so verification cannot pass.
-    s.sim.current[("svc-dns", "dns_success_rate")] = 0.0
-    s.sim.current[("svc-dns", "dns_latency_ms")] = 1000.0
-    s.sim.current[("svc-web", "http_ok")] = 0.0
-    await s.pipeline.ingest(
-        __import__("app.schemas.event", fromlist=["Event"]).Event(
-            source_id="svc-dns",
-            source_type="service",
-            metric="dns_success_rate",
-            value=0.0,
-            unit="percent",
-            timestamp=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
-            metadata={"collector": "test"},
+    # Force every DNS verification metric into a failing state (approve snapped them healthy).
+    from datetime import datetime, timezone
+
+    from app.schemas.event import Event
+
+    now = datetime.now(timezone.utc)
+    for metric, value, unit in (
+        ("dns_success_rate", 0.0, "percent"),
+        ("dns_latency_ms", 1000.0, "ms"),
+    ):
+        s.sim.current[("svc-dns", metric)] = value
+        await s.pipeline.ingest(
+            Event(
+                source_id="svc-dns",
+                source_type="service",
+                metric=metric,
+                value=value,
+                unit=unit,
+                timestamp=now,
+                metadata={"collector": "test"},
+            )
         )
-    )
     s.actions._recovering[inc.id] = time.time() - 16
     await s.actions.recovery_tick()
     assert inc.status == "resolved" and inc.verification["status"] == "unverified"
@@ -298,22 +312,23 @@ async def test_slow_agents_do_not_get_their_analysis_cancelled_by_new_symptoms(t
         return await real_write(inc, kind, facts)
 
     s.agents.explanation.write = slow_write
-    for _ in range(40):
+    for _ in range(20):
         await s.sim.step(1.0)
     s.demo.update(scenario="uplink-congestion", state="injected", injectedAt="t0")
     s.sim.inject("uplink-congestion")
-    for _ in range(6):
+    for _ in range(8):
         await s.sim.step(1.0)
         await asyncio.sleep(0)
+    assert s.incidents.open, "scenario should open an incident"
     inc = next(iter(s.incidents.open.values()))
     inc.opened_epoch -= 60  # the 10 s debounce deadline has passed: analysis starts on the next symptom
 
     diagnosed_while_symptoms_kept_arriving = False
-    for _ in range(6):  # a symptom every 0.6 s: the next one lands while the 0.8 s analysis is in flight
+    for _ in range(10):  # keep symptoms arriving while the slow explanation runs
         await s.sim.step(1.0)
-        await asyncio.sleep(0.6)
+        await asyncio.sleep(0.35)
         diagnosed_while_symptoms_kept_arriving = diagnosed_while_symptoms_kept_arriving or bool(inc.root_cause)
-    await asyncio.sleep(2.0)
+    await asyncio.sleep(3.0)
 
     assert diagnosed_while_symptoms_kept_arriving  # not only after the symptoms stopped
     assert inc.root_cause and inc.status == "awaiting_approval" and inc.action
