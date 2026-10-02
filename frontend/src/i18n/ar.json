@@ -95,5 +95,15 @@
   "agents.copilot.context": "السياق",
   "agents.copilot.aboutIncident": "الإجابة عن {{id}} (آخر حادثة).",
   "agents.copilot.noIncident": "لا توجد حادثة الآن — تعود الأسئلة إلى الطوبولوجيا والوثائق.",
-  "agents.copilot.howItWorks": "الإجابات من بيانات الحادثة الحية وفهرس محلي للوثائق والطوبولوجيا وكتيبات المعالجة والحوادث السابقة. النص الموجود في الوثائق يُعامل كبيانات وليس كتعليمات."
+  "agents.copilot.howItWorks": "الإجابات من بيانات الحادثة الحية وفهرس محلي للوثائق والطوبولوجيا وكتيبات المعالجة والحوادث السابقة. النص الموجود في الوثائق يُعامل كبيانات وليس كتعليمات.",
+  "agents.test.button": "اختبار الوكلاء والذكاء الاصطناعي",
+  "agents.test.running": "جارٍ الاختبار…",
+  "agents.test.pass": "كل الفحوص نجحت",
+  "agents.test.fail": "بعض الفحوص فشلت",
+  "agents.test.agentsLabel": "الوكلاء",
+  "agents.test.aiLabel": "الذكاء الاصطناعي",
+  "agents.test.agentsDetail": "{{n}} وكيلًا مسجّلًا · {{enabled}} مفعّل",
+  "agents.test.aiLlmDetail": "رد من النموذج (المصدر={{source}}) · {{provider}} / {{model}}",
+  "agents.test.aiOffDetail": "النموذج معطّل — رد حتمي (المصدر={{source}})",
+  "agents.test.aiSkipped": "تُخطّي لأن واجهة الوكلاء فشلت"
 }
