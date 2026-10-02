@@ -90,7 +90,7 @@ export function OperationsPage() {
       <DemoControls />
 
       {!active && demo.state !== 'recovered' && (
-        <div className="pointer-events-none absolute start-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-ok/30 bg-ok/10 px-4 py-2 text-sm text-ok">
+        <div className="pointer-events-none absolute start-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 border border-[var(--ok)] bg-[var(--ok-soft)] px-4 py-2 text-sm text-ok">
           <ShieldCheck className="size-4" />
           {t('incident.empty')}
         </div>

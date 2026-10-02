@@ -33,14 +33,15 @@ export function TopBar() {
 
   return (
     <header
-      className="flex items-center justify-between border-b border-noc-line bg-noc-panel px-4"
+      className="flex items-center justify-between border-b border-noc-line bg-noc-panel px-5"
       style={{ height: 'var(--topbar-h)' }}
     >
-      <div className="flex items-center gap-3">
-        <span className="text-lg font-semibold tracking-wide text-[var(--brand-text)]">
-          {t('appName')}
-        </span>
-        <span className="text-xs text-[var(--text-3)]">{t('topbar.operations')}</span>
+      <div className="flex items-center gap-4">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[15px] font-semibold text-[var(--text-1)]">{t('appName')}</span>
+          <span className="rq-kicker !normal-case !tracking-normal">{t('topbar.operations')}</span>
+        </div>
+        <span className="rq-divider-v h-4" />
         <button
           type="button"
           onClick={toggleMode}
@@ -53,18 +54,18 @@ export function TopBar() {
           {demo.mode === 'live' ? t('topbar.live') : t('topbar.sim')}
         </button>
       </div>
-      <div className="flex items-center gap-3 text-xs text-[var(--text-2)]">
-        <span className="flex items-center gap-1.5">
-          <span className={clsx('inline-block size-2 rounded-full', dot)} />
-          <bdi className="rq-mono">{wsStatus}</bdi>
+      <div className="flex items-center gap-4 text-xs text-[var(--text-2)]">
+        <span className="flex items-center gap-2">
+          <span className={clsx('inline-block size-1.5', dot)} />
+          <bdi className="rq-mono text-[11px]">{wsStatus}</bdi>
         </span>
-        <span className="rq-mono">
+        <span className="rq-mono text-[11px] text-[var(--text-3)]">
           {ageSec === null ? '—' : t('topbar.lastUpdate', { sec: ageSec })}
         </span>
         <button
           type="button"
           onClick={toggleLang}
-          className="rounded px-1.5 py-0.5 text-[10px] tracking-wider text-[var(--text-2)] hover:bg-[var(--bg-hover)]"
+          className="border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-2)] hover:bg-[var(--bg-hover)]"
         >
           {i18n.language === 'ar' ? 'EN' : 'ع'}
         </button>

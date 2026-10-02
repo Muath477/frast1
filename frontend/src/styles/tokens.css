@@ -58,17 +58,17 @@
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
   --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-14: 56px;
 
-  /* Radius — أربعة مستويات حسب الدور، وليس قيمة واحدة لكل شيء */
-  --r-sm:   6px;    /* حقول، شارات مربعة، خلايا */
-  --r-md:   10px;   /* أزرار، بطاقات داخل لوحة */
-  --r-lg:   16px;   /* لوحات عائمة فوق الخريطة */
-  --r-pill: 999px;  /* شارات الحالة، مفاتيح التفعيل */
+  /* Radius — شكل أجهزة غرفة تحكم: زوايا حادّة، لا حبوب مستديرة */
+  --r-sm:   2px;
+  --r-md:   3px;
+  --r-lg:   4px;
+  --r-pill: 3px;
 
   /* Layout */
-  --rail-w:     72px;
-  --topbar-h:   56px;
-  --timeline-h: 72px;
-  --incident-w: 420px;
+  --rail-w:     64px;
+  --topbar-h:   48px;
+  --timeline-h: 88px;
+  --incident-w: 400px;
 
   /* Motion */
   --dur-fast: 120ms;

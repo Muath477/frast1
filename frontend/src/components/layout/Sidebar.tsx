@@ -28,11 +28,11 @@ export function Sidebar() {
   const { t } = useTranslation();
   return (
     <nav
-      className="presenter-hide flex h-full flex-col items-center gap-1 py-3"
+      className="presenter-hide flex h-full flex-col items-center gap-0.5 py-4"
       style={{ width: 'var(--rail-w)' }}
     >
-      <div className="mb-3 flex h-11 w-11 items-center justify-center">
-        <RootIQMark size={40} />
+      <div className="mb-6 flex size-10 items-center justify-center border border-[var(--border)] bg-[var(--bg-raised)]">
+        <RootIQMark size={28} />
       </div>
       {items.map(({ to, labelKey, icon: Icon, end }) => (
         <NavLink
@@ -42,7 +42,7 @@ export function Sidebar() {
           title={t(labelKey)}
           className={({ isActive }) =>
             clsx(
-              'relative flex h-11 w-11 items-center justify-center rounded-lg transition-colors',
+              'relative flex size-11 items-center justify-center transition-colors',
               isActive
                 ? 'bg-[var(--bg-selected)] text-[var(--brand-text)]'
                 : 'text-[var(--text-3)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]',
@@ -54,14 +54,17 @@ export function Sidebar() {
               {isActive && (
                 <span
                   aria-hidden
-                  className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-[var(--brand)]"
+                  className="absolute inset-y-0 start-0 w-[3px] bg-[var(--brand)]"
                 />
               )}
-              <Icon size={20} strokeWidth={1.75} />
+              <Icon size={18} strokeWidth={1.6} />
             </>
           )}
         </NavLink>
       ))}
+      <div className="mt-auto pb-2 font-mono text-[9px] tracking-widest text-[var(--text-3)]">
+        RQ
+      </div>
     </nav>
   );
 }

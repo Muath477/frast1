@@ -63,7 +63,7 @@ export function ActionCard({ action, engineer, incidentStatus, needsInvestigatio
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-noc-line bg-noc-bg/50 p-3">
+    <div className="space-y-3 border border-[var(--border)] bg-[var(--bg-raised)] p-3">
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs leading-relaxed text-slate-200">{action.description}</p>
         <span className={clsx('shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase', riskColor)}>

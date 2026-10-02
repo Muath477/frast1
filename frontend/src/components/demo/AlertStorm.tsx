@@ -16,50 +16,40 @@ export function AlertStorm({ incident }: Props) {
 
   if (hasIncident) {
     return (
-      <div className="absolute left-3 top-3 z-20 w-[340px] overflow-hidden rounded-xl border border-noc-line bg-noc-panel/95 shadow-xl">
-        <div className="grid grid-cols-[1fr_auto_1fr] gap-1 p-3">
-          <div className="rounded-lg border border-crit/30 bg-crit/10 p-2">
-            <div className="text-[10px] uppercase tracking-wider text-crit/80">Traditional NMS</div>
-            <div className="font-mono text-3xl font-bold tabular-nums text-crit">{raw}</div>
-            <div className="text-[11px] text-slate-400">alerts</div>
+      <div className="rq-panel rq-panel--quiet absolute start-3 top-3 z-20 w-[360px] overflow-hidden">
+        <div className="rq-slab-title">
+          <span>Alert storm → one cause</span>
+          {noise != null && (
+            <span className="rq-metric text-[var(--brand-text)]">{noise.toFixed(1)}%</span>
+          )}
+        </div>
+        <div className="grid grid-cols-[1fr_24px_1fr] items-stretch">
+          <div className="px-3 py-3">
+            <div className="rq-kicker text-[var(--crit)]">NMS</div>
+            <div className="rq-metric mt-2 text-3xl text-[var(--crit)] line-through decoration-1 opacity-80">
+              {raw}
+            </div>
+            <div className="mt-1 text-[11px] text-[var(--text-3)]">raw alerts</div>
           </div>
-          <div className="flex items-center justify-center px-1">
-            <motion.span
-              animate={{ x: [0, 6, 0] }}
-              transition={{ repeat: Infinity, duration: 1.2 }}
-              className="text-xl text-info"
-            >
-              →
-            </motion.span>
-          </div>
-          <div className="rounded-lg border border-ok/30 bg-ok/10 p-2">
-            <div className="text-[10px] uppercase tracking-wider text-ok/80">RootIQ</div>
-            <div className="font-mono text-3xl font-bold tabular-nums text-ok">1</div>
-            <div className="truncate text-[11px] text-slate-300">
+          <div className="flex items-center justify-center text-[var(--brand-text)]">→</div>
+          <div className="border-s border-[var(--border-subtle)] px-3 py-3">
+            <div className="rq-kicker text-[var(--brand-text)]">RootIQ</div>
+            <div className="rq-metric mt-2 text-3xl text-[var(--brand-text)]">1</div>
+            <div className="mt-1 truncate text-[11px] text-[var(--text-2)]">
               {incident?.rootCause?.label ?? 'incident'}
             </div>
           </div>
         </div>
-        {noise != null && (
-          <div className="border-t border-noc-line bg-noc-bg/60 px-3 py-2 text-center">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500">
-              Noise reduction
-            </span>
-            <div className="font-mono text-2xl tabular-nums text-info">{noise.toFixed(1)}%</div>
-          </div>
-        )}
-        <ul className="max-h-40 space-y-1 overflow-y-auto border-t border-noc-line p-2">
+        <ul className="max-h-36 space-y-0 overflow-y-auto border-t border-[var(--border-subtle)]">
           <AnimatePresence initial={false}>
-            {alerts.slice(0, 12).map((a) => (
+            {alerts.slice(0, 10).map((a) => (
               <motion.li
                 key={a.id}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className={clsx(
-                  'rounded-md border px-2 py-1 font-mono text-[10px]',
-                  a.severity === 'critical'
-                    ? 'border-crit/40 bg-crit/10 text-crit'
-                    : 'border-warn/40 bg-warn/10 text-warn',
+                  'border-b border-[var(--border-subtle)] px-3 py-1.5 font-mono text-[10px]',
+                  a.severity === 'critical' ? 'text-[var(--crit)]' : 'text-[var(--warn)]',
                 )}
               >
                 {a.sourceId} · {a.metric}={a.value}
@@ -72,40 +62,33 @@ export function AlertStorm({ incident }: Props) {
   }
 
   return (
-    <div className="absolute left-3 top-3 z-20 flex h-[45%] w-[260px] flex-col overflow-hidden rounded-xl border border-noc-line bg-noc-panel/95 shadow-xl">
-      <header className="border-b border-noc-line px-3 py-2">
-        <div className="text-[10px] uppercase tracking-wider text-slate-500">
-          What a traditional NMS shows you
-        </div>
-        <div className="mt-1 flex items-baseline justify-between">
-          <span className="text-sm font-semibold">Raw alerts</span>
-          <span className="font-mono text-2xl tabular-nums text-crit">{alerts.length}</span>
-        </div>
-      </header>
-      <ul className="flex-1 space-y-1 overflow-y-auto p-2">
+    <div className="rq-panel rq-panel--quiet absolute start-3 top-3 z-20 flex h-[42%] w-[280px] flex-col overflow-hidden">
+      <div className="rq-slab-title">
+        <span>Traditional NMS feed</span>
+        <span className="rq-metric text-[var(--crit)]">{alerts.length}</span>
+      </div>
+      <ul className="flex-1 space-y-0 overflow-y-auto">
         <AnimatePresence initial={false}>
           {alerts.slice(0, 40).map((a) => (
             <motion.li
               key={a.id}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className={clsx(
-                'rounded-md border px-2 py-1.5 font-mono text-[11px]',
-                a.severity === 'critical'
-                  ? 'border-crit/40 bg-crit/10 text-crit'
-                  : 'border-warn/40 bg-warn/10 text-warn',
+                'border-b border-[var(--border-subtle)] px-3 py-2 font-mono text-[11px]',
+                a.severity === 'critical' ? 'text-[var(--crit)]' : 'text-[var(--warn)]',
               )}
             >
               <div className="truncate">{a.sourceId}</div>
-              <div className="text-slate-400">
+              <div className="text-[var(--text-3)]">
                 {a.metric} = {a.value}
               </div>
             </motion.li>
           ))}
         </AnimatePresence>
         {alerts.length === 0 && (
-          <li className="px-2 py-6 text-center text-xs text-slate-500">
+          <li className="px-3 py-8 text-center text-xs text-[var(--text-3)]">
             Waiting for threshold crossings…
           </li>
         )}

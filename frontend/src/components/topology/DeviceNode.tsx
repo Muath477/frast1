@@ -32,8 +32,8 @@ export function DeviceNode({ data, selected }: NodeProps<DeviceNodeT>) {
   return (
     <div
       className={clsx(
-        'min-w-[160px] rounded-xl border-2 bg-noc-panel/95 px-4 py-3 shadow-lg transition-colors',
-        selected && 'ring-2 ring-info',
+        'min-w-[148px] border bg-noc-panel px-3 py-2.5 transition-colors',
+        selected && 'outline outline-1 outline-[var(--brand)] outline-offset-2',
         focus === 'cause' && 'rootiq-cause',
       )}
       style={{
@@ -43,7 +43,8 @@ export function DeviceNode({ data, selected }: NodeProps<DeviceNodeT>) {
             : focus === 'impact'
               ? IMPACT_COLOR
               : STATUS_COLOR[device.status],
-        borderWidth: focus === 'cause' ? 4 : undefined,
+        borderWidth: focus === 'cause' ? 3 : 1,
+        borderRadius: 0,
       }}
     >
       <div className="flex items-center gap-2">

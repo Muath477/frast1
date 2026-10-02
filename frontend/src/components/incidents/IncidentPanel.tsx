@@ -50,44 +50,45 @@ export function IncidentPanel({ incident, onClose }: Props) {
     <AnimatePresence>
       {incident && (
         <motion.aside
-          initial={{ x: 40, opacity: 0 }}
+          initial={{ x: 24, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 40, opacity: 0 }}
-          className="absolute end-0 top-0 z-20 flex h-full flex-col border-s border-noc-line bg-noc-panel/98 shadow-2xl"
+          exit={{ x: 24, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="rq-panel rq-panel--crit absolute end-0 top-0 z-20 flex h-full flex-col bg-noc-panel"
           style={{ width: 'var(--incident-w)' }}
         >
           <header className="border-b border-noc-line px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="font-mono text-sm text-info">{incident.id}</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="rq-mono text-sm text-[var(--brand-text)]">{incident.id}</div>
               <div className="flex items-center gap-2">
                 <span
                   data-testid="incident-status"
-                  className="font-mono text-[11px] uppercase text-slate-400"
+                  className="rq-mono text-[10px] text-[var(--text-3)]"
                 >
-                  {incident.status}
+                  {incident.status.replaceAll('_', ' ')}
                 </span>
                 <span
                   className={clsx(
-                    'rounded px-1.5 py-0.5 text-[10px] uppercase',
+                    'border px-1.5 py-0.5 text-[10px]',
                     incident.severity === 'critical' || incident.severity === 'high'
-                      ? 'bg-crit/20 text-crit'
-                      : 'bg-warn/20 text-warn',
+                      ? 'border-[var(--crit)] text-[var(--crit)]'
+                      : 'border-[var(--warn)] text-[var(--warn)]',
                   )}
                 >
                   {incident.severity}
                 </span>
-                <span className="font-mono text-lg tabular-nums">{elapsed}</span>
+                <span className="rq-mono text-base tabular-nums">{elapsed}</span>
                 {onClose && (
-                  <button type="button" onClick={onClose} className="text-slate-500 hover:text-white">
+                  <button type="button" onClick={onClose} className="text-[var(--text-3)] hover:text-[var(--text-1)]">
                     ✕
                   </button>
                 )}
               </div>
             </div>
-            <h2 className="mt-1 text-base font-semibold">{incident.title}</h2>
+            <h2 className="mt-2 text-[15px] font-semibold leading-snug">{incident.title}</h2>
           </header>
 
-          <div className="flex gap-1 overflow-x-auto border-b border-noc-line px-3 py-2">
+          <div className="flex gap-1 border-b border-noc-line px-3 py-3">
             {STEPS.map((step) => {
               const idx = STEPS.indexOf(step);
               const cur = STEPS.indexOf(
@@ -96,18 +97,18 @@ export function IncidentPanel({ incident, onClose }: Props) {
               return (
                 <div
                   key={step}
+                  title={step.replaceAll('_', ' ')}
                   className={clsx(
-                    'rounded px-1.5 py-1 text-[9px] uppercase tracking-wide',
-                    idx <= cur ? 'bg-info/20 text-info' : 'text-slate-600',
+                    'rq-stage',
+                    idx < cur && 'is-done',
+                    idx === cur && 'is-current',
                   )}
-                >
-                  {step.replaceAll('_', ' ')}
-                </div>
+                />
               );
             })}
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto p-4 text-sm">
+          <div className="flex-1 space-y-5 overflow-y-auto p-4 text-sm">
             {incident.rootCause ? (
               <section className="flex items-start gap-3">
                 <ConfidenceRing value={conf} />
