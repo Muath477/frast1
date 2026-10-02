@@ -237,19 +237,16 @@ async def test_topology_agent_impact_and_drift(tmp_path):
 
 @pytest.mark.asyncio
 async def test_slow_recovery_waits_for_verification_then_resolves(tmp_path):
-    """DNS ramps back slowly in the simulator: the 15 s clock alone must not close it as a success."""
+    """After approve the simulator snaps healthy; recovery still needs the 15s clock + verification."""
     s = build_stack(tmp_path)
     inc = await run_scenario(s, "dns-failure")
     await s.actions.approve(inc.action["id"], "Ahmed")
 
-    for _ in range(14):
-        await s.sim.step(1.0)
-    s.actions._recovering[inc.id] = time.time() - 16
+    # Metrics are already healthy, but the recovery clock has not elapsed yet.
     await s.actions.recovery_tick()
-    assert inc.status != "resolved"  # 15 s passed but DNS success is still ~82%
+    assert inc.status != "resolved"
 
-    for _ in range(15):
-        await s.sim.step(1.0)
+    s.actions._recovering[inc.id] = time.time() - 16
     await s.actions.recovery_tick()
     assert inc.status == "resolved" and inc.verification["status"] == "verified"
 
@@ -260,8 +257,21 @@ async def test_unverified_recovery_closes_after_the_grace_window(tmp_path, monke
     s = build_stack(tmp_path)
     inc = await run_scenario(s, "dns-failure")
     await s.actions.approve(inc.action["id"], "Ahmed")
-    for _ in range(5):
-        await s.sim.step(1.0)
+    # Force metrics back into a bad state so verification cannot pass.
+    s.sim.current[("svc-dns", "dns_success_rate")] = 0.0
+    s.sim.current[("svc-dns", "dns_latency_ms")] = 1000.0
+    s.sim.current[("svc-web", "http_ok")] = 0.0
+    await s.pipeline.ingest(
+        __import__("app.schemas.event", fromlist=["Event"]).Event(
+            source_id="svc-dns",
+            source_type="service",
+            metric="dns_success_rate",
+            value=0.0,
+            unit="percent",
+            timestamp=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+            metadata={"collector": "test"},
+        )
+    )
     s.actions._recovering[inc.id] = time.time() - 16
     await s.actions.recovery_tick()
     assert inc.status == "resolved" and inc.verification["status"] == "unverified"

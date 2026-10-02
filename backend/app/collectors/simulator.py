@@ -14,6 +14,7 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.schemas.event import Event
+from app.services.hub import hub
 
 BASELINE_CORE = [
     ("link-r1-sw1", "link", "link_utilization", "percent", 14, 3),
@@ -142,6 +143,10 @@ class Simulator:
                     metadata={"collector": "simulator", "recovery": True},
                 )
             )
+        # Paint the map green now — don't wait for the 1 Hz flush loop.
+        dirty, self.pipeline.state.dirty = self.pipeline.state.dirty, set()
+        for entity in dirty:
+            await hub.broadcast(self.pipeline.state.kind(entity), self.pipeline.state.payload(entity))
 
     def reset(self):
         self.active, self.recovering = None, False
