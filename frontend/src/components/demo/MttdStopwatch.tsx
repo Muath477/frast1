@@ -31,19 +31,19 @@ export function MttdStopwatch({ injectedAt, analyzedAt }: Props) {
   return (
     <div
       className={clsx(
-        'absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-2xl border px-6 py-3 text-center shadow-2xl',
+        'rq-float absolute left-1/2 top-3 z-30 -translate-x-1/2 px-6 py-3 text-center',
         frozen
           ? underTarget
-            ? 'border-ok/50 bg-ok/15'
-            : 'border-warn/50 bg-warn/15'
-          : 'border-info/50 bg-noc-panel/95',
+            ? 'border-[color:var(--ok)]'
+            : 'border-[color:var(--warn)]'
+          : 'border-[color:var(--brand)]',
       )}
     >
-      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">MTTD Stopwatch</div>
+      <div className="text-[length:var(--fs-2xs)] text-[var(--text-3)]">MTTD Stopwatch</div>
       <div
         className={clsx(
-          'font-mono text-4xl font-bold tabular-nums',
-          frozen ? (underTarget ? 'text-ok' : 'text-warn') : 'text-info',
+          'rq-stopwatch',
+          frozen ? (underTarget ? 'text-ok' : 'text-warn') : 'text-[var(--brand-text)]',
         )}
       >
         {seconds.toFixed(1)}
@@ -54,7 +54,7 @@ export function MttdStopwatch({ injectedAt, analyzedAt }: Props) {
           Root cause in {seconds.toFixed(1)} s · target &lt; 60 s
         </div>
       ) : (
-        <div className="mt-1 text-xs text-slate-500">Detecting…</div>
+        <div className="mt-1 text-xs text-[var(--text-3)]">Detecting…</div>
       )}
     </div>
   );

@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useOps } from '@/store/useOps';
 import { api } from '@/lib/api';
+import { applyLang, getTheme, setTheme, type Lang, type Theme } from '@/lib/theme';
 import clsx from 'clsx';
 
 const KEY = 'rootiq.engineer';
 
 export function SettingsPage() {
+  const { t, i18n } = useTranslation();
   const [name, setName] = useState('Ahmed');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [theme, setThemeState] = useState<Theme>(() => getTheme());
   const demo = useOps((s) => s.demo);
 
   useEffect(() => {
@@ -22,8 +26,8 @@ export function SettingsPage() {
       await api.setMode(mode);
       setMsg(
         mode === 'sim'
-          ? 'Switched to SIMULATION — continue the demo (badge shows SIMULATION).'
-          : 'Switched to LIVE LAB — ensure collector/agent are healthy.',
+          ? 'Switched to Simulation — badge shows Simulation.'
+          : 'Switched to Live lab — ensure collector/agent are healthy.',
       );
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
@@ -32,42 +36,88 @@ export function SettingsPage() {
     }
   };
 
+  const onTheme = (tMode: Theme) => {
+    setTheme(tMode);
+    setThemeState(tMode);
+  };
+
+  const onLang = (l: Lang) => {
+    void i18n.changeLanguage(l);
+    applyLang(l);
+  };
+
   return (
     <div className="mx-auto max-w-lg space-y-6 p-6">
-      <h1 className="text-lg font-semibold">Settings</h1>
+      <h1 className="text-lg font-semibold">{t('nav.settings')}</h1>
       <label className="block text-sm">
-        <span className="text-slate-400">Engineer name (for Approve / Reject)</span>
+        <span className="text-[var(--text-2)]">{t('settings.engineer')}</span>
         <input
           value={name}
           onChange={(e) => {
             setName(e.target.value);
             localStorage.setItem(KEY, e.target.value);
           }}
-          className="mt-1 w-full rounded-lg border border-noc-line bg-noc-panel px-3 py-2 outline-none focus:border-info"
+          className="mt-1 w-full rounded-[var(--r-md)] border border-noc-line bg-noc-panel px-3 py-2 outline-none focus:border-info"
         />
       </label>
 
-      <section className="space-y-3 rounded-lg border border-noc-line bg-noc-panel/60 p-4">
+      <section className="space-y-3 rounded-[var(--r-md)] border border-noc-line bg-noc-panel/60 p-4">
+        <h2 className="text-sm font-semibold">{t('settings.appearance')}</h2>
+        <div className="flex gap-2">
+          {(['dark', 'light'] as Theme[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onTheme(mode)}
+              className={clsx(
+                'rounded-[var(--r-md)] px-3 py-1.5 text-xs font-semibold',
+                theme === mode
+                  ? 'bg-[var(--bg-selected)] text-[var(--brand-text)]'
+                  : 'border border-noc-line text-[var(--text-2)] hover:bg-[var(--bg-hover)]',
+              )}
+            >
+              {mode === 'dark' ? t('settings.themeDark') : t('settings.themeLight')}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-[var(--r-md)] border border-noc-line bg-noc-panel/60 p-4">
+        <h2 className="text-sm font-semibold">{t('settings.language')}</h2>
+        <div className="flex gap-2">
+          {(['ar', 'en'] as Lang[]).map((l) => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => onLang(l)}
+              className={clsx(
+                'rounded-[var(--r-md)] px-3 py-1.5 text-xs font-semibold',
+                i18n.language === l
+                  ? 'bg-[var(--bg-selected)] text-[var(--brand-text)]'
+                  : 'border border-noc-line text-[var(--text-2)] hover:bg-[var(--bg-hover)]',
+              )}
+            >
+              {l === 'ar' ? 'العربية' : 'English'}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-[var(--r-md)] border border-noc-line bg-noc-panel/60 p-4">
         <h2 className="text-sm font-semibold">Demo failover</h2>
-        <p className="text-xs text-slate-500">
-          If EVE-NG stalls mid-pitch: Presenter says «Let me switch to our recorded lab feed» →
-          switch to Simulation here (or click the TopBar badge). Badge must show{' '}
-          <span className="font-semibold text-info">SIMULATION</span>.
+        <p className="text-xs text-[var(--text-3)]">
+          If EVE-NG stalls mid-pitch: switch to Simulation here (or click the TopBar badge). Badge must
+          show <span className="font-semibold text-[var(--brand-text)]">Simulation</span>.
         </p>
         <div className="flex items-center gap-2">
-          <span
-            className={clsx(
-              'rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wider',
-              demo.mode === 'live' ? 'bg-ok/20 text-ok' : 'bg-info/20 text-info',
-            )}
-          >
-            {demo.mode === 'live' ? 'LIVE LAB' : 'SIMULATION'}
+          <span className={clsx('mode-badge', demo.mode === 'live' ? 'mode-badge--live' : 'mode-badge--sim')}>
+            {demo.mode === 'live' ? t('topbar.live') : t('topbar.sim')}
           </span>
           <button
             type="button"
             disabled={busy || demo.mode === 'sim'}
             onClick={() => void setMode('sim')}
-            className="rounded-lg bg-info/90 px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-40"
+            className="rq-btn-primary px-3 disabled:opacity-40"
           >
             Use Simulation feed
           </button>
@@ -75,12 +125,12 @@ export function SettingsPage() {
             type="button"
             disabled={busy || demo.mode === 'live'}
             onClick={() => void setMode('live')}
-            className="rounded-lg border border-noc-line px-3 py-1.5 text-xs text-slate-300 disabled:opacity-40"
+            className="rq-btn-secondary px-3 disabled:opacity-40"
           >
             Use Live lab
           </button>
         </div>
-        {msg && <p className="text-[11px] text-slate-400">{msg}</p>}
+        {msg && <p className="text-[11px] text-[var(--text-3)]">{msg}</p>}
       </section>
     </div>
   );

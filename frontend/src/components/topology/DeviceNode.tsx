@@ -3,7 +3,7 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import { Router, Network, Server, Radar } from 'lucide-react';
 import clsx from 'clsx';
 import type { Iface, Side, TopoNode } from '@/lib/types';
-import { STATUS_COLOR } from '@/lib/colors';
+import { STATUS_COLOR, CAUSE_COLOR, IMPACT_COLOR } from '@/lib/colors';
 
 export type Focus = 'cause' | 'impact' | null;
 export type DeviceNodeT = Node<{ device: TopoNode; focus: Focus }, 'device'>;
@@ -39,17 +39,18 @@ export function DeviceNode({ data, selected }: NodeProps<DeviceNodeT>) {
       style={{
         borderColor:
           focus === 'cause'
-            ? '#ef4444'
+            ? CAUSE_COLOR
             : focus === 'impact'
-              ? '#f59e0b'
+              ? IMPACT_COLOR
               : STATUS_COLOR[device.status],
+        borderWidth: focus === 'cause' ? 4 : undefined,
       }}
     >
       <div className="flex items-center gap-2">
-        <Icon className="size-5" style={{ color: STATUS_COLOR[device.status] }} />
+        <Icon className="size-5" style={{ color: STATUS_COLOR[device.status] }} strokeWidth={1.75} />
         <span className="font-semibold tracking-wide">{device.label}</span>
       </div>
-      <div className="mt-1 font-mono text-[11px] text-slate-400">{device.managementIp}</div>
+      <div className="mt-1 font-mono text-[11px] text-[var(--text-3)]">{device.managementIp}</div>
       {(Object.keys(bySide) as Side[]).flatMap((side) =>
         (bySide[side] ?? []).map((i, idx) => (
           <Handle

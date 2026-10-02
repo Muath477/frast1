@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOps } from '@/store/useOps';
 import { api } from '@/lib/api';
+import { applyLang, type Lang } from '@/lib/theme';
 import clsx from 'clsx';
 
 export function TopBar() {
@@ -21,7 +22,9 @@ export function TopBar() {
     wsStatus === 'open' ? 'bg-ok' : wsStatus === 'connecting' ? 'bg-warn' : 'bg-crit';
 
   const toggleLang = () => {
-    void i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar');
+    const next: Lang = i18n.language === 'ar' ? 'en' : 'ar';
+    void i18n.changeLanguage(next);
+    applyLang(next);
   };
 
   const toggleMode = () => {
@@ -29,34 +32,39 @@ export function TopBar() {
   };
 
   return (
-    <header className="flex items-center justify-between border-b border-noc-line bg-noc-panel px-4">
+    <header
+      className="flex items-center justify-between border-b border-noc-line bg-noc-panel px-4"
+      style={{ height: 'var(--topbar-h)' }}
+    >
       <div className="flex items-center gap-3">
-        <span className="text-lg font-semibold tracking-wide text-info">{t('appName')}</span>
-        <span className="text-xs text-slate-400">{t('topbar.operations')}</span>
+        <span className="text-lg font-semibold tracking-wide text-[var(--brand-text)]">
+          {t('appName')}
+        </span>
+        <span className="text-xs text-[var(--text-3)]">{t('topbar.operations')}</span>
         <button
           type="button"
           onClick={toggleMode}
           title="Hot-switch mode"
           className={clsx(
-            'rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
-            demo.mode === 'live' ? 'animate-pulse bg-ok/20 text-ok' : 'bg-info/20 text-info',
+            'mode-badge',
+            demo.mode === 'live' ? 'mode-badge--live' : 'mode-badge--sim',
           )}
         >
           {demo.mode === 'live' ? t('topbar.live') : t('topbar.sim')}
         </button>
       </div>
-      <div className="flex items-center gap-3 text-xs text-slate-400">
+      <div className="flex items-center gap-3 text-xs text-[var(--text-2)]">
         <span className="flex items-center gap-1.5">
           <span className={clsx('inline-block size-2 rounded-full', dot)} />
-          <bdi>{wsStatus}</bdi>
+          <bdi className="rq-mono">{wsStatus}</bdi>
         </span>
-        <span>
+        <span className="rq-mono">
           {ageSec === null ? '—' : t('topbar.lastUpdate', { sec: ageSec })}
         </span>
         <button
           type="button"
           onClick={toggleLang}
-          className="rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-300 hover:bg-white/5"
+          className="rounded px-1.5 py-0.5 text-[10px] tracking-wider text-[var(--text-2)] hover:bg-[var(--bg-hover)]"
         >
           {i18n.language === 'ar' ? 'EN' : 'ع'}
         </button>
