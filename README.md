@@ -151,7 +151,163 @@ https://dashboard.render.com/select-repo?type=blueprint
 
 Lab collector → FastAPI ingest → detect/correlate/RCA/explain → WebSocket UI → approve → whitelisted lab agent.
 
-Full Mermaid + 30s verbal: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+Full narrative + 30s verbal: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · Agents: [`docs/AGENTS.md`](docs/AGENTS.md)
+
+### UML — system components
+
+```mermaid
+flowchart TB
+  subgraph Client["Frontend · React / Vite"]
+    UI[Operations UI]
+    AgentsPage[Agents / Copilot]
+    DemoCtrl[Demo Controls]
+  end
+
+  subgraph API["Backend · FastAPI"]
+    REST[REST API]
+    WS[WebSocket /ws/operations]
+    Pipe[Event Pipeline]
+    Intel[Intelligence\ndetect · correlate · RCA · explain]
+    Agents[Agent Runtime\n16 agents + Orchestrator]
+    ActSvc[Action Service]
+    Hub[Ops Hub]
+  end
+
+  subgraph Data["Data & knowledge"]
+    Topo[(configs/topology.json)]
+    KB[(Vendor KB)]
+    RAG[(RAG index)]
+    Store[(State / optional Postgres)]
+  end
+
+  subgraph Sources["Telemetry sources"]
+    Sim[Simulator · sim mode]
+    Col[Lab Collector · live]
+    LabAg[Lab Agent · whitelist only]
+  end
+
+  DemoCtrl -->|inject / reset| REST
+  UI <-->|snapshot · incident · demo| WS
+  AgentsPage -->|ask / health| REST
+  REST --> Pipe
+  Sim --> Pipe
+  Col --> Pipe
+  Pipe --> Intel --> Agents
+  Agents --> Hub
+  Hub --> WS
+  Agents --> KB
+  Agents --> RAG
+  Agents --> Topo
+  Pipe --> Store
+  UI -->|approve / reject| REST --> ActSvc
+  ActSvc -->|sim remediate| Sim
+  ActSvc -->|live remediate| LabAg
+```
+
+### UML — demo sequence (inject → RCA → human gate)
+
+```mermaid
+sequenceDiagram
+  actor Eng as Engineer
+  participant UI as React UI
+  participant API as FastAPI
+  participant Sim as Simulator
+  participant Orch as Orchestrator
+  participant WS as WebSocket Hub
+
+  Eng->>UI: Choose scenario + Run
+  UI->>API: POST /api/demo/inject/{scenario}
+  API->>Sim: inject(scenario)
+  API->>WS: demo.state = injected
+  loop Metrics every ~1s
+    Sim->>API: Event ingest
+    API->>Orch: detect → correlate → investigate
+  end
+  Orch->>Orch: RCA + explanation + knowledge + vendor
+  Orch->>Orch: remediation + guardrail
+  Orch-->>WS: incident awaiting_approval
+  WS-->>UI: incident + agent_step
+  Eng->>UI: Approve or Reject
+  UI->>API: POST /api/actions/{id}/approve
+  API->>API: guardrail.check
+  API->>Sim: remediate / recover
+  API-->>WS: demo.state = recovered
+  WS-->>UI: resolved incident
+```
+
+### UML — multi-agent pipeline
+
+```mermaid
+stateDiagram-v2
+  [*] --> Perceive
+  Perceive --> Correlate: telemetry · logs · detection
+  Correlate --> Diagnose: correlation · topology
+  Diagnose --> Plan: rca · explanation · knowledge · vendor
+  Plan --> HumanGate: remediation · guardrail
+  HumanGate --> Act: named engineer approves
+  HumanGate --> [*]: reject / reset
+  Act --> Close: guardrail · execution
+  Close --> [*]: verification · learning
+
+  note right of HumanGate
+    Advisor ≠ Actor
+    system / agent:* → 403
+  end note
+```
+
+### UML — core packages (backend)
+
+```mermaid
+classDiagram
+  direction LR
+  class FastAPIApp {
+    +routers
+    +lifespan
+  }
+  class Pipeline {
+    +ingest(event)
+  }
+  class IncidentService {
+    +on_anomaly()
+    +investigate()
+  }
+  class Orchestrator {
+    +investigate()
+    +safe(agent)
+  }
+  class AgentRuntime {
+    +agents
+    +trace
+    +set_enabled()
+  }
+  class ActionService {
+    +recommend()
+    +approve()
+    +reject()
+  }
+  class OpsHub {
+    +broadcast()
+  }
+  class KnowledgeBase {
+    +identify()
+    +commands()
+  }
+  class Simulator {
+    +inject()
+    +remediate()
+    +step()
+  }
+
+  FastAPIApp --> Pipeline
+  FastAPIApp --> ActionService
+  FastAPIApp --> OpsHub
+  Pipeline --> IncidentService
+  IncidentService --> Orchestrator
+  Orchestrator --> AgentRuntime
+  AgentRuntime --> KnowledgeBase
+  ActionService --> Simulator
+  IncidentService --> OpsHub
+```
 
 ## Multi-agent layer
 
