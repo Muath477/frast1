@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -11,6 +11,7 @@ import { DeviceNode, type DeviceNodeT, type Focus } from './DeviceNode';
 import { PortEdge } from './PortEdge';
 import { toFlow } from '@/lib/layout';
 import type { Topology } from '@/lib/types';
+import { cssToken } from '@/lib/theme';
 
 const nodeTypes = { device: DeviceNode };
 const edgeTypes = { port: PortEdge };
@@ -31,6 +32,15 @@ export function TopologyCanvas({
 }: Props) {
   const flow = useMemo(() => toFlow(topology, focus), [topology, focus]);
   const [nodes, setNodes, onNodesChange] = useNodesState<DeviceNodeT>(flow.nodes);
+  const [grid, setGrid] = useState(() => cssToken('--topo-grid', 'rgba(169, 176, 224, .07)'));
+
+  useEffect(() => {
+    const sync = () => setGrid(cssToken('--topo-grid', 'rgba(169, 176, 224, .07)'));
+    sync();
+    const mo = new MutationObserver(sync);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => mo.disconnect();
+  }, []);
 
   useEffect(() => {
     setNodes((cur) =>
@@ -42,7 +52,7 @@ export function TopologyCanvas({
   }, [flow.nodes, setNodes]);
 
   return (
-    <div dir="ltr" className="h-full w-full">
+    <div dir="ltr" className="h-full w-full bg-[var(--bg-canvas)]">
       <ReactFlow
         nodes={nodes}
         edges={flow.edges}
@@ -65,7 +75,7 @@ export function TopologyCanvas({
         }
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#1f2a4d" gap={24} />
+        <Background color={grid} gap={24} />
         <MiniMap pannable zoomable className="!bg-noc-panel" />
         <Controls />
       </ReactFlow>

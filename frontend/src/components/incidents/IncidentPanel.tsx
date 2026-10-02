@@ -53,7 +53,8 @@ export function IncidentPanel({ incident, onClose }: Props) {
           initial={{ x: 40, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 40, opacity: 0 }}
-          className="absolute end-0 top-0 z-20 flex h-full w-[420px] flex-col border-s border-noc-line bg-noc-panel/98 shadow-2xl"
+          className="absolute end-0 top-0 z-20 flex h-full flex-col border-s border-noc-line bg-noc-panel/98 shadow-2xl"
+          style={{ width: 'var(--incident-w)' }}
         >
           <header className="border-b border-noc-line px-4 py-3">
             <div className="flex items-center justify-between">
