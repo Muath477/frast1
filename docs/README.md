@@ -11,6 +11,7 @@
 | [`../.github/`](../.github) | أتمتة GitHub: CI (اختبارات + اتساق القاعدة والبيانات والتوثيق)، وبيئة وكيل Copilot، وتعليمات المستودع، ووكيلان مخصّصان (`vendor-kb`, `docs-keeper`)، وقالب الـPR |
 | [`AGENTS.md`](AGENTS.md) | الوكلاء الـ16: فائدة كل وكيل، ما يحتاجه، ضوابطه، التدهور الآمن، الـAPI، الاختبارات (وماذا أُضيف/عُدّل لدعم المصنّعين §4b) |
 | [`UI.md`](UI.md) | واجهات الواجهة: كل صفحة ومكوّناتها، لوحة الحادثة، الاختصارات، ووضع Presenter |
+| [`BRAND-IDENTITY.md`](BRAND-IDENTITY.md) | نظام الهوية البصرية: ألوان Abyss/Signal، الشعار، الخطوط، الحركة، وخطة التطبيق |
 | [`REFERENCES.md`](REFERENCES.md) | أوراق وكتب للقراءة (أرقام arXiv مفحوصة)، وما فُحص من مجموعات السجلات وسبب استبعادها من التدريب |
 | [`VENDORS.md`](VENDORS.md) | قاعدة معرفة المصنّعين: ماذا تغطي وبأي ثقة، الهوية والأوامر وSyslog والمشاكل، كيف تضيف مصنّعًا، وحدودها |
 | [`../configs/topology.multivendor.example.json`](../configs/topology.multivendor.example.json) | مثال طوبولوجيا متعددة المصنّعين (Cisco + Juniper + Arista + Fortinet + Aruba) |
