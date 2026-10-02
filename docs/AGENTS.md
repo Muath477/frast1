@@ -27,7 +27,7 @@
 | 15 | `verification` التحقق | إجراء | يراقب | التعافي يُثبَت بالأرقام لا يُفترض | لا |
 | 16 | `learning` التعلّم وما بعد الحادثة | تعلّم | ينصح | كل حادثة تجعل التالية أسرع، وتقرير جاهز للفريق | لا |
 
-**14 من 16 وكيلًا حتمية (Deterministic) بالكامل.** الـLLM يدخل فقط في `explanation` و`copilot`، وبشرطين: (1) مفتاح API مفعّل، (2) كل رقم في الجواب موجود في الحقائق المقاسة — وإلا يُرفض الجواب ويُستخدم القالب.
+**14 من 16 وكيلًا حتمية (Deterministic) بالكامل.** الـLLM يدخل في `explanation` و`copilot` (إعادة صياغة)، وفي `knowledge`/`vendor` كـ**مرجع استشاري** فقط عند فراغ قاعدة المعرفة — وبشرط أن كل رقم في النص موجود في الحقائق المقاسة، وإلا يُرفض.
 
 ---
 
@@ -155,11 +155,11 @@ flowchart LR
 | `topology.scope` | تُتخطى | RCA يكمل (يستخدم الرسم مباشرة) |
 | `detection.multivariate` | تُتخطى | لا دليل Isolation Forest (كان داعمًا فقط) |
 | `explanation` | **يُستخدم القالب** (`template`) | شرح EN/AR جاهز |
-| `knowledge` | لا «حوادث مشابهة» ولا مراجع؛ والـCopilot لا يسترجع | الحادثة تكتمل |
+| `knowledge` | لا «حوادث مشابهة» ولا مراجع؛ إن فُعّل LLM قد يُرفق `aiReference` استشاريًا | الحادثة تكتمل |
 | `rca` | الاستثناء يصعد؛ الحادثة تبقى `investigating` ويُسجَّل الخطأ | **حرج** — لذلك لا يُعطَّل |
 | `guardrail` | أي استثناء ← الموافقة تفشل (fail closed) | لا تنفيذ |
 | `execution` | `approvalStatus = failed` + Audit `execute_failed` | لا تعافٍ تلقائي |
-| `vendor` | لا `vendorContext` ولا `vendorCommands` في الخطة (تبقى الخطة الأساسية كاملة) | الحادثة والموافقة يكملان |
+| `vendor` | لا `vendorContext` ولا `vendorCommands`؛ إن فُعّل LLM قد يُرفق `aiReference` عند الفراغ | الحادثة والموافقة يكملان |
 | `logs` | `POST /api/syslog` ← 503؛ القياسات الدورية تبقى | لا سقوط منفذ من السجلات |
 | `verification` | `verification = null` | الإغلاق يكمل |
 | `learning` | يُسجَّل `history` فقط بدون تقرير | الإغلاق يكمل |
@@ -171,170 +171,239 @@ flowchart LR
 
 ## 4. الوكلاء واحدًا واحدًا
 
-> قالب كل قسم: **الفائدة ← المهمة ← المدخلات/المخرجات ← كيف يعمل ← ما يحتاجه ← الضوابط ← عند الفشل ← الكود والاختبار.**
+> الترتيب هنا = ترتيب الجدول السريع (§0) و`ORDER` في `roster.py`.
+> قالب كل قسم: **ماذا يفعل ← متى يعمل ← كيف يعمل خطوة بخطوة ← المدخلات/المخرجات ← مثال من الديمو ← الضوابط + عند الفشل ← الكود والاختبار.**
 
 ### 4.1 `orchestrator` — المنسّق
-- **الفائدة:** الحادثة لا تتوقف لأن LLM بطيء أو ملف نموذج مفقود؛ والمهندس/الحكم يرى مسارًا مرتبًا بدل صندوق أسود.
-- **المهمة:** تشغيل التشخيص بترتيب ثابت، تطبيق مهلة وبدائل، ثم **تسليم الحالة للإنسان**.
-- **المدخلات:** حادثة فيها أعراض (`IncidentState`) + قائمة الخدمات المتأثرة.
-- **المخرجات:** `Investigation` (top, confidence, root, candidates, impactPath, explanation, knowledge…) + خطوات `investigate` و`handoff_to_human` و`incident_closed`.
-- **كيف يعمل:** `investigate()` يستدعي بالترتيب: `telemetry.incident_context` → `correlation.storm_summary` → `topology.scope` → `rca.rank` (حرج) → `topology.impact` → `detection.multivariate` → `explanation.write` → `knowledge.related` → `vendor.enrich`. كل استدعاء اختياري يمر عبر `safe()`: يتخطى إن كان الوكيل معطّلًا، ويقطع عند المهلة، ويبتلع الخطأ (الوكيل سجّله بنفسه).
-- **يحتاج:** `AgentRuntime` + `AGENT_TIMEOUT_S`.
-- **الضوابط:** لا يملك أداة `approve` ولا `execute`؛ لا يُعطَّل.
-- **عند الفشل:** فشل RCA يصعد كاستثناء (لا تشخيص بدون سبب).
-- **الكود/الاختبار:** `agents/orchestrator.py` — `test_agent_flow.py::test_diagnosis_runs_agents_in_order_and_stops_at_the_human`, `::test_slow_knowledge_agent_times_out_without_blocking_the_incident`, `::test_disabled_optional_agents_degrade_gracefully`.
+
+- **ماذا يفعل:** يشغّل التشخيص بترتيب ثابت، يطبّق مهلة وبدائل للوكلاء الاختياريين، ثم **يسلّم الحالة للمهندس** — لا يوافق ولا ينفّذ.
+- **متى يعمل:** بعد فتح/تحديث حادثة (`investigate`)؛ عند جاهزية الخطة (`handoff_to_human`)؛ عند إغلاق الحادثة (`incident_closed`).
+- **كيف يعمل خطوة بخطوة:**
+  1. `investigate()` يستدعي بالترتيب عبر `safe()`: `telemetry.incident_context` → `correlation.storm_summary` → `topology.scope` → `rca.rank` (**حرج**) → `topology.impact` → `detection.multivariate` → `explanation.write` → `knowledge.related` → `vendor.enrich`.
+  2. `safe()` يتخطى الوكيل المعطّل، يقطع عند `AGENT_TIMEOUT_S`، ويبتلع خطأ الوكيل الاختياري (مسجَّل في Trace).
+  3. يبني `Investigation` ويحدّث الحادثة؛ ثم `handoff()` يضع الحالة بانتظار الإنسان؛ بعد التعافي `closed()` يستدعي verification ثم learning.
+- **المدخلات / المخرجات:** مدخل: `IncidentState` + خدمات متأثرة. مخرج: `Investigation` (top, confidence, root, candidates, impactPath, explanation, knowledge, vendorContext…) + خطوات Trace `investigate` / `handoff_to_human` / `incident_closed`.
+- **مثال من الديمو (uplink-congestion):** بعد عاصفة الأعراض على `link-r1-sw1` يكتمل التشخيص خلال ~10 ث ويصل إلى `handoff_to_human` — لا شيء يُنفَّذ قبل Approve.
+- **الضوابط + عند الفشل:** لا أداة `approve`/`execute`؛ لا يُعطَّل. فشل RCA يصعد كاستثناء (لا تشخيص بدون سبب).
+- **الكود والاختبار:** `agents/orchestrator.py` — `test_agent_flow.py::test_diagnosis_runs_agents_in_order_and_stops_at_the_human`, `::test_slow_knowledge_agent_times_out_without_blocking_the_incident`, `::test_disabled_optional_agents_degrade_gracefully`.
 
 ### 4.2 `telemetry` — وكيل القياسات
-- **الفائدة:** رقم مستحيل (استخدام 140%) أو وحدة خاطئة أو مصدر صامت لا يصير سببًا جذريًا مزيفًا.
-- **المهمة:** التحقق من كل حدث وارد وتتبع حداثة كل مصدر.
-- **المدخلات:** `Event` المطبَّع (`POST /api/events`).
-- **المخرجات:** أعلام جودة (`non_finite`, `out_of_range`, `negative_value`, `unit_mismatch`, `duplicate`)، خريطة الحداثة، `qualityScore`.
-- **كيف يعمل:** `observe(ev)` على المسار الساخن (بلا Trace لتفادي الضجيج): يتحقق من القيمة المنتهية، ومدى النسب المئوية [0..100]، وعدم سلبية الـms، ومطابقة الوحدة، والتكرار. `NaN/Inf` ← رفض 422. قبل RCA: `incident_context()` يتحقق أن مصادر الحادثة حديثة (أقل من 20 ث) وإلا يحذّر «ثقة RCA قد تكون مبالغًا بها».
-- **يحتاج:** جدول `METRIC_UNIT` في `agents/telemetry.py`.
-- **الضوابط:** لا يعدّل القيم؛ يُعلّم ولا يحذف بصمت (عدا غير المنتهي).
-- **عند التعطيل:** تُتخطى خطوة السياق فقط.
-- **الاختبار:** `test_agent_flow.py::test_telemetry_agent_flags_bad_data_and_rejects_non_finite`.
+
+- **ماذا يفعل:** يمنع أن يصير رقم مستحيل أو مصدر صامت سببًا جذريًا مزيفًا — يتحقق من جودة الأحداث ويتتبع حداثة المصادر.
+- **متى يعمل:** على كل حدث وارد (`observe`)؛ وقبل RCA داخل التحقيق (`incident_context` / `assess_sources`).
+- **كيف يعمل خطوة بخطوة:**
+  1. `observe(ev)` على المسار الساخن (بلا Trace): قيمة منتهية، نسب مئوية في [0..100]، latencies غير سالبة، مطابقة الوحدة، كشف التكرار.
+  2. `NaN/Inf` ← رفض HTTP 422.
+  3. `incident_context()` يتحقق أن مصادر الحادثة حديثة (< 20 ث) وإلا يحذّر أن ثقة RCA قد تكون مبالغًا بها؛ يحسب `qualityScore`.
+- **المدخلات / المخرجات:** مدخل: `Event` مطبَّع (`POST /api/events`). مخرج: أعلام جودة (`non_finite`, `out_of_range`, `negative_value`, `unit_mismatch`, `duplicate`)، خريطة الحداثة، `qualityScore`.
+- **مثال من الديمو:** في uplink-congestion: `assess_sources` → 3 مصادر حديثة، جودة 100%.
+- **الضوابط + عند الفشل:** لا يعدّل القيم؛ يُعلّم ولا يحذف بصمت (عدا غير المنتهي). عند التعطيل تُتخطى خطوة السياق فقط؛ الفحص السريع للأحداث يبقى.
+- **الكود والاختبار:** `agents/telemetry.py` — `test_agent_flow.py::test_telemetry_agent_flags_bad_data_and_rejects_non_finite`.
 
 ### 4.3 `detection` — وكيل الكشف
-- **الفائدة:** كشف في ~ثانية بدون بيانات تدريب، ونموذج متعدد المتغيرات لا يستطيع اختراع سبب.
-- **المهمة:** تحويل تدفق المقاييس إلى شذوذات.
-- **المدخلات:** `(entity, metric, value, ts)`.
-- **المخرجات:** `Anomaly` + مستوى تنبيه خام + دليل multivariate.
-- **كيف يعمل:** (1) عتبة ثابتة من `thresholds.py`؛ (2) z-score على EWMA **لا يعمل إلا بعد** تجاوز عتبة ثابتة (يمنع حوادث كاذبة)؛ (3) Isolation Forest **دليل داعم فقط** إن وُجد `data/models/iforest.joblib` وكانت الدرجة > 0.6. تعلّم الـbaseline يتجمد أثناء الشذوذ كي لا «يتعوّد» على العطل.
-- **يحتاج:** ~20 عينة سليمة للإحماء؛ النموذج اختياري.
-- **الضوابط:** لا يُعطَّل (المسار الساخن يعتمد عليه)؛ IF لا يغيّر الترتيب.
-- **الكود:** `agents/detection.py` + `intelligence/{detector,baseline,anomaly,thresholds}.py` — اختبارات `test_detector.py` `test_baseline.py` `test_thresholds.py`.
 
-### 4.4 `topology` — وكيل الطوبولوجيا
-- **الفائدة:** إجابات «من يتأثر؟» من الرسم؛ وتظليل مسار السبب ومسار التأثر على الخريطة.
-- **المهمة:** امتلاك رسم الاعتماديات (NetworkX): الخدمات ↔ الروابط ↔ الأجهزة، upstream/downstream، ونطاق التأثر، وكشف الانحراف.
-- **المدخلات:** معرّفات عناصر؛ جيران CDP/LLDP المرصودون.
-- **المخرجات:** الخدمات المتأثرة، `impactPath`، `path(a,b)`، تقرير انحراف `reconcile`، وطرفا كل رابط (جهاز + منفذ) لتستعملهما `vendor` و`logs`.
-- **تعديل (دعم المصنّعين):** حقول اختيارية في عقدة الطوبولوجيا: `vendor` (تلميح نصي حر مثل «Juniper EX4300»)، `sysDescr`، `sysObjectId`، `os` — يقرؤها `vendor` لتحديد المصنّع/النظام/الإصدار. بدونها يبقى كل شيء يعمل.
-- **كيف يعمل:** `scope()` قبل RCA يحسب سلاسل اعتماد كل خدمة متأثرة؛ `impact(root)` بعد RCA يحسب ما بعد السبب؛ `reconcile()` يقارن (device, port, neighbor, neighborPort) بالمعلن في `configs/topology.json` ويُرجع `unexpected` و`missing`.
-- **يحتاج:** `configs/topology.json` (المنافذ تُعرَّف هناك فقط) + نقطة vantage.
-- **الضوابط:** قراءة فقط؛ لا يخترع معرّفات.
-- **API:** `POST /api/topology/reconcile`.
-- **الاختبار:** `test_agent_flow.py::test_topology_agent_impact_and_drift`.
+- **ماذا يفعل:** يحوّل تدفق المقاييس إلى شذوذات خلال ~ثانية بدون بيانات تدريب؛ Isolation Forest دليل داعم فقط لا يخترع سببًا.
+- **متى يعمل:** على كل عيّنة مقياس في الـpipeline (`observe`)؛ وبعد RCA كدليل اختياري (`multivariate_score`).
+- **كيف يعمل خطوة بخطوة:**
+  1. عتبة ثابتة من `thresholds.py`.
+  2. z-score على EWMA **فقط بعد** تجاوز العتبة الثابتة (يمنع حوادث كاذبة).
+  3. Isolation Forest إن وُجد `data/models/iforest.joblib` والدرجة > 0.6 — دليل داعم لا يغيّر ترتيب RCA.
+  4. تعلّم الـbaseline يتجمد أثناء الشذوذ كي لا «يتعوّد» على العطل.
+- **المدخلات / المخرجات:** مدخل: `(entity, metric, value, ts)`. مخرج: `Anomaly` + مستوى تنبيه خام + دليل multivariate (أو `skipped`).
+- **مثال من الديمو:** عتبات الازدحام على `link-r1-sw1.if_out_discards_rate` تفتح العاصفة؛ `multivariate_score` غالبًا `skipped` إن لم يُدرَّب النموذج.
+- **الضوابط + عند الفشل:** لا يُعطَّل. غياب نموذج IF ← تُتخطى الخطوة فقط.
+- **الكود والاختبار:** `agents/detection.py` + `intelligence/{detector,baseline,anomaly,thresholds}.py` — `test_detector.py`, `test_baseline.py`, `test_thresholds.py`.
 
-### 4.5 `correlation` — وكيل الربط
-- **الفائدة:** المهندس يرى **حادثة واحدة** بدل عاصفة تنبيهات (مقاس: ~96% تقليل).
-- **المهمة:** ضم الأعراض المترابطة طوبولوجيًا ضمن نافذة 120 ث.
-- **المدخلات:** `Anomaly` + الحوادث المفتوحة.
-- **المخرجات:** الحادثة المناسبة (أو فتح جديدة) + `noiseReduction = 1 − 1/raw`.
-- **كيف يعمل:** `pick()` يستخدم `Correlator.related`: نفس العنصر، أو downstream، أو تشارك خدمة، أو مسافة ≤ 3 قفزات. تُسجَّل خطوتان فقط: `open_incident` و`collapse_storm` (لا Trace لكل عرَض).
-- **الضوابط:** لا يضم أعراضًا غير مترابطة؛ النافذة محدودة.
-- **الاختبار:** `test_correlate.py` + تدفق `test_agent_flow.py`.
+### 4.4 `logs` — وكيل السجلات (Syslog)
 
-### 4.6 `rca` — وكيل السبب الجذري
-- **الفائدة:** أفضل 3 مرشحين مع الأدلة وتفكيك الدرجة؛ وعند الثقة < 55% يقول «يحتاج تحقيقًا».
-- **المهمة:** ترتيب الأسباب بدرجة موزونة قابلة للتفسير + الإجابة عن «لماذا ليس X؟».
-- **المخرجات:** `Candidate[]` + `confidence` + `why_not()`.
-- **كيف يعمل:** `score = 0.30·metric_anomaly + 0.25·dependency_overlap + 0.20·temporal_proximity + 0.15·blast_radius + 0.10·historical_support`. عنصر يقع **بعد** عنصر شاذ آخر تُضرب درجته في 0.5 (العرَض ليس سببًا). الثقة = الدرجة الأولى مخصومًا منها فرق قليل مع الثانية.
-- **`why_not(entity)`:** 5 أنواع جواب: `is_root` · `suppressed` (يذكر العنصر السابق) · `lower_score` (يذكر أكبر مكوّن فرق) · `below_top3` · `no_symptoms`.
-- **الضوابط:** حتمي 100%؛ لا LLM في الترتيب.
-- **الكود/الاختبار:** `agents/rca.py` + `intelligence/rca.py` — `test_rca.py`, `test_scenarios.py` (السيناريوهات الثلاثة ⇒ الجذر الصحيح), `test_copilot.py::test_why_not_uses_the_rca_reasoning`.
+- **ماذا يفعل:** يلتقط سقوط منفذ من سجل الجهاز نفسه (Cisco/Juniper/Arista/Huawei/MikroTik…) ويحوّله إلى حدث موحّد في الـpipeline — لا يعتمد على الاستطلاع الدوري فقط.
+- **متى يعمل:** عند `POST /api/syslog`؛ مستقل عن مسار التحقيق الدوري لكنه يغذّي نفس كشف/ربط الحوادث.
+- **كيف يعمل خطوة بخطوة:**
+  1. تنظيف السطر (حذف رموز التحكم، ≤ 1000 حرف؛ ≤ 200 سطر/طلب).
+  2. تلميح المصنّع من الطوبولوجيا أو من الطلب ← `parse_syslog` (أنماط متعددة المصنّعين).
+  3. توحيد اسم المنفذ (`GigabitEthernet0/0` = `Gi0/0`) ← `port_to_link` ← `pipeline.ingest` كحدث `syslog_link_down` (1 = سقط، 0 = عاد).
+  4. أحداث غير المنافذ (OSPF/BGP/STP، `config_change`) تُوحَّد وتُخزَّن ولا تفتح حادثة بمفردها.
+- **المدخلات / المخرجات:** مدخل: `{device, vendor?, lines[]}` + رمز الإدخال. مخرج: لكل سطر `{parsed, vendor, event, interface, state, link, pushed, alsoMatches}`.
+- **مثال من الديمو:** سطر Cisco `%LINEPROTO-5-UPDOWN` على منفذ معروف ← حدث رابط ← قد يفتح/يغذّي حادثة (مغطى في اختبارات المصنّعين).
+- **الضوابط + عند الفشل:** ما لا يُعرف = `unparsed` بلا تخمين؛ منفذ خارج الطوبولوجيا لا يُدفع للـpipeline. عند التعطيل: `/api/syslog` ← 503؛ القياسات الدورية تبقى.
+- **الكود والاختبار:** `agents/logs.py`, `api/vendors.py` — `test_vendor_agents.py` (`test_cisco_link_down_line_becomes_a_link_event_and_opens_an_incident` وأخواته).
 
-### 4.7 `explanation` — وكيل الشرح
-- **الفائدة:** شرح مقروء بالعربية والإنجليزية للـNOC بدون رقم مختلق.
-- **كيف يعمل:** قوالب EN/AR لكل نوع سبب (link / svc-dns / server) تُملأ من حقائق مقاسة. إن فُعّل LLM: يُطلب منه إعادة الصياغة بجملتين؛ ثم `grounded()` يرفض أي رقم غير موجود في الحقائق ← الرجوع للقالب.
-- **يحتاج:** لا شيء للوضع الحتمي؛ مفتاح Provider فقط إن `LLM_ENABLED=1`.
-- **عند الفشل/التعطيل:** القالب (`source: template`).
-- **الاختبار:** `test_explain.py`, `test_agent_flow.py::test_disabled_optional_agents_degrade_gracefully`.
+### 4.5 `topology` — وكيل الطوبولوجيا
 
-### 4.8 `knowledge` — وكيل المعرفة (RAG)
-- **الفائدة:** «هذه الحادثة شبيهة بـINC-0007 وهذه خطوة الـrunbook» — في أجزاء من الثانية وبمصدر.
-- **المصادر المفهرسة:** كتالوج المصنّعين (`kind=vendor`: ملف لكل مصنّع، و`vendor-cmd`: جدول أوامر لكل نظام) وكتالوج المشاكل (`kind=problem`) — وزنهما 0.9 كي لا يطغيا على وثائق المشروع؛ ثم `docs/*.md`، `README.md`، `RootIQ_Daily_Plan.md` (وزنه 0.6 لضخامته)، `configs/topology.json` (وصف نصي لكل جهاز/رابط/خدمة)، العتبات، الـplaybooks الثلاثة، `lab/configs/*` (بعد حجب الأسرار)، الحوادث الحية، وتقارير ما بعد الحادثة.
-- **كيف يعمل:** تقطيع Markdown بحسب العناوين (≤ 900 حرف) ← تنظيف وحجب أسرار ← TF-IDF (كلمات + ثنائيات، `sublinear_tf`، كلمات وقف EN/AR، تطبيع عربي: تشكيل/همزات/ياء/تاء مربوطة/«ال») ← تشابه جيب التمام ← عتبة `RAG_MIN_SCORE=0.10`.
-- **`related(inc)`:** بعد RCA يبحث عن حوادث/تقارير مشابهة (استبعاد نفس الحادثة) + مراجع (docs/playbook/topology) ويضعها في `incident.knowledge` (تظهر في لوحة الحادثة).
-- **الضوابط:** الأسرار محجوبة قبل الفهرسة؛ المقاطع التي تحاول توجيه النموذج (عبارات أوامر مضمَّنة في النص) تُعلَّم `suspicious` ولا تصل للجواب؛ لا نتائج دون العتبة.
-- **يحتاج:** `scikit-learn`؛ مجلد `docs/` (تنسخه Dockerfiles الآن).
-- **الفهرس يُبنى** في الخلفية عند الإقلاع (`asyncio.to_thread`) كي لا يبطّئ أول حادثة. `POST /api/knowledge/reindex` لإعادة البناء.
-- **الاختبار:** `test_rag.py` (تقطيع، حجب، حقن، عربي، بحث، عدم تسريب الأسرار من المستودع الحقيقي).
+- **ماذا يفعل:** يجيب «ماذا ينكسر لو بطؤ هذا الرابط؟» من رسم الاعتماديات (NetworkX) لا من التخمين؛ يظلل مسار السبب والأثر على الخريطة.
+- **متى يعمل:** قبل RCA (`scope_dependencies`)؛ بعد RCA (`impact`)؛ وعند مقارنة CDP/LLDP (`reconcile`).
+- **كيف يعمل خطوة بخطوة:**
+  1. يملك الرسم: خدمات ↔ روابط ↔ أجهزة، upstream/downstream، أطراف كل رابط (جهاز + منفذ).
+  2. `scope()` يحسب سلاسل اعتماد الخدمات المتأثرة قبل الترتيب.
+  3. `impact(root)` يحسب ما بعد السبب الجذري.
+  4. `reconcile()` يقارن الجيران المرصودين بـ`configs/topology.json` → `unexpected` / `missing`.
+- **المدخلات / المخرجات:** مدخل: معرّفات عناصر؛ جيران مرصودون. مخرج: خدمات متأثرة، `impactPath`، `path(a,b)`، تقرير انحراف، أطراف الروابط لـ`vendor`/`logs`. حقول عقدة اختيارية: `vendor`, `sysDescr`, `sysObjectId`, `os`.
+- **مثال من الديمو:** `scope` على ازدحام uplink → 3 عناصر تؤثر على `svc-dns` و`svc-web`.
+- **الضوابط + عند الفشل:** قراءة فقط؛ لا يخترع معرّفات. عند الفشل/التخطي يكمل RCA باستخدام الرسم مباشرة. لا يُعطَّل.
+- **الكود والاختبار:** `agents/topology.py` — `POST /api/topology/reconcile` — `test_agent_flow.py::test_topology_agent_impact_and_drift`.
 
-### 4.9 `copilot` — وكيل المساعد
-- **الفائدة:** سؤال بالعربية أو الإنجليزية بدل التنقل: «لماذا ليس DNS؟»، «ماذا أفعل؟»، «كم زمن الوصول للسبب؟».
-- **النوايا (Intents):** `incident_summary` · `why_cause` · `why_not` · `impact` · `recommend` · `audit` · `kpi` · `similar` · `status` · `action_request` (يرفض بلطف) · `vendor_help` (أوامر/مشاكل/مصنّعون من قاعدة المعرفة — حتمي حرفي ولا يُعاد صياغته بالـLLM) · `docs` (RAG عام).
-- **كيف يعمل:** يكشف اللغة ← يصنّف النية (كلمات مطبّعة EN/AR) ← يحدد العنصر المذكور (`DNS`, `APP-01`, `R1 Gi0/0`…) ← يجمع حقائق من قراءات حية (حادثة/طوبولوجيا/Audit/KPIs) ← جواب حتمي مع مصادر `[1] [2]`. إن فُعّل LLM: يعيد الصياغة بشرطين: كل رقم مؤسَّس على (الحقائق + السياق + السؤال) ووجود استشهاد `[n]` لسؤال الوثائق؛ وإلا يبقى الجواب الحتمي.
-- **للقراءة فقط بالبناء:** لا توجد أداة `approve/reject/execute/inject/toggle` (قائمة `TOOLS`)، واختبار يفحص كود الملف حرفيًا. طلب «وافق على الإجراء» ← يرد أنه للقراءة فقط ويحيل لزرّي Approve/Reject.
-- **مقاومة الحقن:** مقاطع الوثائق **بيانات**؛ المشبوهة تُستبعد وتظهر في `warnings`؛ والسؤال نفسه إن بدا كتعليمات يُنبَّه عليه.
-- **يقول «لم أجد»** بدل التخمين (`confidence: none`).
-- **API:** `POST /api/copilot/ask` `{question, incidentId?, lang?}` ← `{answer, intent, confidence, source, sources[], facts, warnings[]}`.
-- **الاختبار:** `test_copilot.py` (تصنيف EN/AR، القراءة فقط، حدود LLM، تسميم وثيقة…).
+### 4.6 `vendor` — وكيل معرفة المصنّعين
 
-### 4.10 `remediation` — مخطِّط المعالجة
-- **الفائدة:** الموافقة على **خطة**: خطوات، أثر، تراجع، ومعيار نجاح رقمي.
-- **كيف يعمل:** يختار Playbook واحدًا لنوع السبب (link → `PB-LINK-QOS`، svc-dns → `PB-DNS-RESTART`، server → `PB-SERVER-KILL-RUNAWAY`) ويملأ: `preconditions`, `steps` (read/change/verify + أمر توضيحي), `rollback`, `verification` (معايير رقمية مثل `link_utilization < 70`), `blastRadius`, `riskFactors`, `labImplementation`. ترتفع المخاطرة درجة إن كانت الثقة < 55%.
-- **تعديل (دعم المصنّعين):** إن وُجد `vendorContext` يُضيف للخطة `plan.vendorCommands` = {المشكلة المطابقة، الأجهزة، `diagnose` (أوامر قراءة لكل جهاز حسب مصنّعه ونظامه)، `fixes` (أوامر مرجعية تحتاج موافقة)، `executable: false`}. هذه **نص مرجعي للمهندس** ولا ينفّذها RootIQ؛ ما يُنفَّذ بعد الموافقة يبقى الـplaybook الأبيض.
-- **الضوابط:** من الكتالوج فقط؛ `requiresApproval=true`, `autoExecutable=false` دائمًا.
-- **ملاحظة صدق:** ما ينفّذه وكيل المختبر فعليًا endpoint ثابت لكل سيناريو (مثلًا إيقاف iperf3 لسيناريو الازدحام)؛ حقل `labImplementation` يذكر ذلك صراحة. تطبيق QoS الحقيقي عبر Netmiko مسار إنتاجي لاحق (انظر BLUEPRINT §9).
-- **الاختبار:** `test_agent_flow.py::test_all_three_scenarios_get_a_matching_playbook`.
+- **ماذا يفعل:** يعرّف مصنّع/نظام/إصدار كل جهاز، يطابق أنماط مشاكل معروفة، ويعطي أوامر فحص (قراءة فقط) وإصلاح مرجعي بلغة الجهاز — دون تنفيذ.
+- **متى يعمل:** بعد RCA داخل `investigate` (`enrich_incident`)؛ ويدعم نية `vendor_help` في الـCopilot وواجهات `/api/vendors*`.
+- **كيف يعمل خطوة بخطوة:**
+  1. `devices_for(root)`: رابط ← طرفاه؛ خدمة ← مضيفها؛ جهاز ← نفسه.
+  2. `identify` من `sysObjectID` / `sysDescr` / تلميح نصي.
+  3. `problems_for(metrics, kind)` يطابق أنماطًا معروفة (ازدحام، CRC، duplex، flapping، …) مع استبعاد غير المنطبق.
+  4. يبني `diagnose`/`fixes` لكل جهاز + `configModel` (أسلوب الحفظ/التراجع) — نص مرجعي فقط.
+  5. **إن فرغت المشاكل أو لم يُعرَّف أي جهاز** وكان LLM مفعّلًا: يستدعي `llm.reference.advise()` ويلحق `aiReference` (استشاري + `grounded`) في `vendorContext` ولوحة الحادثة.
+- **المدخلات / المخرجات:** مدخل: سبب جذري + مقاييس شاذة + هوية الطوبولوجيا. مخرج: `incident.vendorContext = {rootEntity, kind, devices[], problems[], known, aiReference?}`.
+- **مثال من الديمو:** R1 و SW1 = Cisco IOS؛ نمط Link congestion؛ أوامر فحص Cisco لـGi0/0 و Gi0/1 تظهر لاحقًا في الخطة.
+- **الضوابط + عند الفشل:** أوامر القراءة بقوائم سماح/منع؛ التغيير فقط لأنواع محدودة وبـ`needsApproval`؛ `executable=false`. عند التعطيل/الفراغ بدون LLM: لا `vendorContext`/`vendorCommands` وتكمل الحادثة. التغطية: انظر `docs/VENDORS.md`.
+- **الكود والاختبار:** `agents/vendor.py`, `llm/reference.py`, `knowledge/loader.py` — `test_knowledge_base.py`, `test_vendor_agents.py`.
 
-### 4.11 `guardrail` — وكيل الحماية
-- **الفائدة:** القاعدة «لا تنفيذ بدون مهندس» مطبّقة في الكود وتُسجَّل كل مخالفة.
-- **السياسات:**
+### 4.7 `correlation` — وكيل الربط
+
+- **ماذا يفعل:** يضم عشرات التنبيهات المترابطة طوبولوجيًا في **حادثة واحدة** (~96% تقليل ضجيج).
+- **متى يعمل:** عند كل عرَض جديد (`pick` / `open_incident`)؛ وملخص العاصفة أثناء التحقيق (`collapse_storm`).
+- **كيف يعمل خطوة بخطوة:**
+  1. `pick()` عبر `Correlator.related`: نفس العنصر، أو downstream، أو تشارك خدمة، أو مسافة ≤ 3 قفزات، ضمن نافذة 120 ث.
+  2. يفتح حادثة جديدة أو يضم إلى مفتوحة.
+  3. `storm_summary` يحسب `noiseReduction = 1 − 1/raw` ويسجّل Trace مرة واحدة للعاصفة (لا لكل عرَض).
+- **المدخلات / المخرجات:** مدخل: `Anomaly` + حوادث مفتوحة. مخرج: الحادثة المناسبة + `noiseReduction`.
+- **مثال من الديمو:** 39 عرَضًا خامًا على 3 عناصر ← INC واحدة (~97% تقليل).
+- **الضوابط + عند الفشل:** لا يضم غير المترابط. تخطّي `storm_summary` لا يؤثر على `pick`. لا يُعطَّل.
+- **الكود والاختبار:** `agents/correlation.py` — `test_correlate.py` + تدفق `test_agent_flow.py`.
+
+### 4.8 `rca` — وكيل السبب الجذري
+
+- **ماذا يفعل:** يرتّب أفضل 3 أسباب بأدلة ونسب ثقة قابلة للتفسير؛ ويقول «يحتاج تحقيقًا» عند الثقة < 55%؛ ويجيب «لماذا ليس X؟».
+- **متى يعمل:** خطوة حرجة داخل `investigate` بعد النطاق الطوبولوجي؛ و`why_not` عند أسئلة الـCopilot.
+- **كيف يعمل خطوة بخطوة:**
+  1. `score = 0.30·metric_anomaly + 0.25·dependency_overlap + 0.20·temporal_proximity + 0.15·blast_radius + 0.10·historical_support`.
+  2. عنصر يقع **بعد** عنصر شاذ آخر تُضرب درجته في 0.5 (العرَض ليس سببًا).
+  3. الثقة = الدرجة الأولى مع خصم فرق صغير مع الثانية.
+  4. `why_not(entity)`: `is_root` · `suppressed` · `lower_score` · `below_top3` · `no_symptoms`.
+- **المدخلات / المخرجات:** مدخل: حادثة + خدمات متأثرة + الرسم. مخرج: `Candidate[]` + `confidence` + السبب المختار.
+- **مثال من الديمو:** السبب: R1 Gi0/0 → SW1 Gi0/1 بثقة ~90%؛ الثاني Internal DNS (~0.39).
+- **الضوابط + عند الفشل:** حتمي 100% — لا LLM في الترتيب. لا يُعطَّل؛ الاستثناء يصعد وتبقى الحادثة `investigating`.
+- **الكود والاختبار:** `agents/rca.py` + `intelligence/rca.py` — `test_rca.py`, `test_scenarios.py`, `test_copilot.py::test_why_not_uses_the_rca_reasoning`.
+
+### 4.9 `explanation` — وكيل الشرح
+
+- **ماذا يفعل:** يكتب شرحًا مقروءًا EN+AR للـNOC بلا أي رقم مختلق.
+- **متى يعمل:** بعد تحديد السبب داخل `investigate` (`write_explanation`).
+- **كيف يعمل خطوة بخطوة:**
+  1. قوالب EN/AR حسب نوع السبب (link / svc-dns / server) تُملأ من حقائق مقاسة فقط.
+  2. إن `LLM_ENABLED=1`: يطلب إعادة صياغة بجملتين ثم `grounded()` — أي رقم غريب ← رفض والرجوع للقالب.
+- **المدخلات / المخرجات:** مدخل: حادثة + نوع السبب + حقائق. مخرج: نص EN/AR + `source: template|llm`.
+- **مثال من الديمو:** شرح قالبي للازدحام على رابط R1–SW1 يظهر في لوحة الحادثة.
+- **الضوابط + عند الفشل/التعطيل:** دائمًا القالب كبديل؛ لا اختراع أرقام.
+- **الكود والاختبار:** `agents/explanation.py` — `test_explain.py`, `test_agent_flow.py::test_disabled_optional_agents_degrade_gracefully`.
+
+### 4.10 `knowledge` — وكيل المعرفة (RAG)
+
+- **ماذا يفعل:** يسترجع حوادث سابقة مشابهة ومراجع runbook/docs/طوبولوجيا/مصنّعين بمصدر؛ وعند فراغ الفهرس يمكن إرفاق مرجع ذكاء اصطناعي استشاري.
+- **متى يعمل:** بعد RCA (`retrieve_context`)؛ وعند فهرسة الحوادث/التقارير؛ وبحث الـCopilot/`/api/knowledge/*`.
+- **كيف يعمل خطوة بخطوة:**
+  1. فهرسة: vendor/problem/docs/topology/playbooks/lab configs (بعد حجب أسرار)/حوادث/تقارير — TF-IDF + عتبة `RAG_MIN_SCORE`.
+  2. `related(inc)`: بحث مشابه (استبعاد نفس الحادثة) + مراجع docs/playbook/topology → `incident.knowledge`.
+  3. **إن لم يوجد similar ولا references** وكان LLM مفعّلًا: `llm.reference.advise("knowledge", "no_kb_hit", facts)` → `knowledge.aiReference` (يظهر في لوحة الحادثة). لا يخترع أوامر تنفيذية؛ يفشل بصمت إن فشل الـgrounding.
+  4. الفهرس يُبنى في الخلفية عند الإقلاع؛ `POST /api/knowledge/reindex` لإعادة البناء.
+- **المدخلات / المخرجات:** مدخل: حادثة + سبب جذري. مخرج: `{similar[], references[], aiReference?}`.
+- **مثال من الديمو:** أول تشغيل غالبًا 0 مشابهة + بضع مراجع؛ بعد إغلاق حادثة سابقة تظهر كمشابهة عبر `learning`.
+- **الضوابط + عند الفشل:** أسرار محجوبة؛ مقاطع حقن = `suspicious` وتُستبعد. عند التعطيل: لا مشابهة/مراجع (وقد يبقى `aiReference` إن مُرِّر المسار مع LLM قبل التعطيل — التعطيل يتخطى الخطوة بالكامل).
+- **الكود والاختبار:** `agents/knowledge.py`, `llm/reference.py`, طبقة RAG — `test_rag.py`, `test_agent_flow.py`.
+
+### 4.11 `copilot` — وكيل المساعد
+
+- **ماذا يفعل:** يجيب أسئلة EN/AR عن الحادثة/الأثر/التوصية/المصنّعين بمصادر؛ للقراءة فقط — لا يوافق ولا ينفّذ.
+- **متى يعمل:** عند `POST /api/copilot/ask` فقط (خارج مسار التحقيق التلقائي).
+- **كيف يعمل خطوة بخطوة:**
+  1. كشف اللغة ← تصنيف النية ← حل العنصر المذكور.
+  2. جمع حقائق حية ← جواب حتمي مع استشهادات `[n]`.
+  3. إن فُعّل LLM: إعادة صياغة المسودة الموثّقة فقط مع `grounded` + شرط الاستشهاد؛ وإلا الجواب الحتمي.
+  4. `vendor_help` حتمي حرفي ولا يُعاد صياغته بالـLLM. طلب تنفيذ ← رفض لطيف وإحالة لأزرار Approve/Reject.
+- **المدخلات / المخرجات:** مدخل: `{question, incidentId?, lang?}`. مخرج: `{answer, intent, confidence, source, sources[], facts, warnings[]}`.
+- **مثال من الديمو:** «لماذا ليس DNS؟» → `why_not` مع تفكيك درجة RCA.
+- **الضوابط + عند الفشل:** لا أدوات `approve/reject/execute/inject/toggle`. عند التعطيل: API ← 503. مقاومة حقن الوثائق مدمجة.
+- **الكود والاختبار:** `agents/copilot.py` — `test_copilot.py`.
+
+### 4.12 `remediation` — مخطِّط المعالجة
+
+- **ماذا يفعل:** يبني خطة playbook محددة (خطوات، أثر، تراجع، معيار نجاح رقمي، أوامر مصنّع مرجعية) بانتظار موافقة المهندس — لا ينفّذ.
+- **متى يعمل:** بعد اكتمال التشخيص وقبل التسليم للإنسان (`plan_remediation`).
+- **كيف يعمل خطوة بخطوة:**
+  1. اختيار playbook حسب نوع السبب: link → `PB-LINK-QOS`، svc-dns → `PB-DNS-RESTART`، server → `PB-SERVER-KILL-RUNAWAY`.
+  2. ملء `preconditions`, `steps`, `rollback`, `verification`, `blastRadius`, `riskFactors`, `labImplementation`.
+  3. رفع المخاطرة درجة إن الثقة < 55%.
+  4. إن وُجد `vendorContext`: إضافة `plan.vendorCommands` (diagnose/fixes، `executable: false`) — نص للمهندس؛ التنفيذ الفعلي يبقى الـplaybook الأبيض فقط.
+- **المدخلات / المخرجات:** مدخل: حادثة بعد RCA (+ vendorContext اختياري). مخرج: `action.plan` جاهز للموافقة.
+- **مثال من الديمو:** `PB-LINK-QOS` مخاطرة low، 3 خطوات، تراجع معرّف، أوامر فحص Cisco لـGi0/0 و Gi0/1.
+- **الضوابط + عند الفشل:** من الكتالوج فقط؛ `requiresApproval=true`, `autoExecutable=false` دائمًا. لا يُعطَّل.
+- **الكود والاختبار:** `agents/remediation.py`, `agents/playbooks.py` — `test_agent_flow.py::test_all_three_scenarios_get_a_matching_playbook`.
+
+### 4.13 `guardrail` — وكيل الحماية
+
+- **ماذا يفعل:** يفرض «لا تنفيذ بدون مهندس» في الكود: يفحص السياسات عند التوصية والموافقة والرفض ويسجّل كل مخالفة.
+- **متى يعمل:** عند بناء التوصية (`policy_recommend`)؛ وعند Approve/Reject (`policy_approve` / `policy_reject`) قبل أي تنفيذ.
+- **كيف يعمل خطوة بخطوة:** يمرّ على السياسات التالية ويعيد `Verdict`:
 
 | السياسة | المراحل | المستوى | ماذا تفحص |
 |---|---|---|---|
-| `human_decider` | approve, reject | **block** | اسم بشري؛ يُرفض الفارغ و`system` و`agent:*` و`orchestrator` و`copilot` و`AI`… |
+| `human_decider` | approve, reject | **block** | اسم بشري؛ يُرفض `system` و`agent:*` و`orchestrator` و`copilot` و`AI`… |
 | `whitelist` | recommend, approve | **block** | `actionType` ضمن كتالوج الـplaybooks |
 | `requires_human` | recommend | **block** | الخطة تتطلب موافقة وغير قابلة للتنفيذ الآلي |
-| `action_pending` | approve | **block** | فقط إجراء `pending` يُوافَق عليه (يمنع الموافقة المزدوجة) |
+| `action_pending` | approve | **block** | فقط إجراء `pending` (يمنع الموافقة المزدوجة) |
 | `incident_state` | approve | **block** | الحادثة ليست resolved/approved |
-| `rate_limit` | approve | **block** | ≤ `GUARDRAIL_MAX_EXECUTIONS` (5) تنفيذات كل 5 دقائق |
-| `lab_scope` | approve (وضع live) | **block** | `LAB_AGENT_URL` عنوان خاص/loopback أو اسم داخلي — عزل المختبر |
-| `execution_switch` | approve (live) | warn + **Dry run** | `ROOTIQ_EXECUTION_ENABLED=0` ← تُسجَّل الموافقة ولا يُغيَّر شيء |
-| `vendor_commands_read_only` | recommend, approve | **block** | كل أمر تشخيص في `plan.vendorCommands` يبدأ بفعل قراءة معروف ولا يحوي فعل تغيير، و`executable=false`، وكل إصلاح `needsApproval` |
+| `rate_limit` | approve | **block** | ≤ `GUARDRAIL_MAX_EXECUTIONS` كل 5 دقائق |
+| `lab_scope` | approve (live) | **block** | `LAB_AGENT_URL` عنوان خاص/داخلي |
+| `execution_switch` | approve (live) | warn + **Dry run** | `ROOTIQ_EXECUTION_ENABLED=0` |
+| `vendor_commands_read_only` | recommend, approve | **block** | أوامر التشخيص قراءة فقط و`executable=false` |
 | `low_confidence` | recommend, approve | warn | الثقة < 55% |
 | `blast_radius` | recommend, approve | warn | 7+ عناصر downstream |
 
-- **مخرجاته:** `Verdict {allowed, execute, warnings, checks[]}` في Trace (`policy_recommend/approve/reject`)؛ عند الرفض يُكتب Audit `guardrail_denied` وتُرجع الواجهة 403.
-- **الضوابط:** لا يُعطَّل.
-- **الاختبار:** `test_guardrail.py` (عشرات الحالات البارامترية) و`test_agent_flow.py::test_agents_and_system_cannot_approve_and_nothing_executes`.
+- **المدخلات / المخرجات:** مدخل: مرحلة + حادثة/إجراء + `decidedBy` + وضع التشغيل. مخرج: `Verdict {allowed, execute, warnings, checks[]}`؛ الرفض ← Audit `guardrail_denied` + HTTP 403.
+- **مثال من الديمو:** موافقة من `Ahmed` تمرّ؛ محاولة من `system` أو `agent:copilot` ← denied ولا تنفيذ.
+- **الضوابط + عند الفشل:** لا يُعطَّل. أي استثناء من الوكيل نفسه ← fail closed (لا تنفيذ). غياب الحكم ← `execution` يرفض.
+- **الكود والاختبار:** `agents/guardrail.py` — `test_guardrail.py`, `test_agent_flow.py::test_agents_and_system_cannot_approve_and_nothing_executes`.
 
-### 4.12 `execution` — وكيل التنفيذ
-- **الفائدة:** نقطة اتصال وحيدة بالمختبر، ترفض العمل بلا موافقة ولا حكم.
-- **كيف يعمل:** يشترط `approvalStatus == approved` **و** `verdict.allowed`. في `sim`: `Simulator.remediate()`. في `live`: `lab_client.call('/remediate/<scenario>')` (وكيل المختبر يشغّل أوامر ثابتة فقط). إن كان مفتاح التنفيذ مغلقًا: **Dry run** (يسجل الأوامر التي كانت ستُنفَّذ). بعد التنفيذ يسجّل في حد المعدل.
-- **عند الفشل:** `approvalStatus = failed` + Audit `execute_failed`.
-- **الضوابط:** لا shell حر؛ لا يُعطَّل.
-- **الاختبار:** `test_agent_flow.py` — `..._reject_then_approve_executes_once...`, `..._live_mode_dry_run...`, `..._live_mode_executes_through_the_whitelisted_lab_agent`, `..._execution_agent_refuses_without_approval_or_verdict`.
+### 4.14 `execution` — وكيل التنفيذ
 
-### 4.13 `verification` — وكيل التحقق
-- **الفائدة:** «تعافى» = أرقام محققة (مثلًا `utilization 26 < 70`) لا مجرد مرور 15 ثانية.
-- **كيف يعمل:** يقرأ `plan.verification` ويقارن بآخر قيم `StateStore`؛ النتيجة `verified | partial | unverified | no_criteria`. في حالتي partial/unverified يقترح مراجعة التراجع/التصعيد.
-- **الضوابط:** لا يغيّر شيئًا ولا يمنع الإغلاق للأبد. بعد مؤقّت الـ15 ثانية الأصلي تنتظر الحادثة تحقق المعايير حتى مهلة `VERIFY_GRACE_S` (30 ث افتراضيًا) ثم تُغلق ويُسجَّل `unverified` إن لم تتحقق. فخدمة بطيئة التعافي (مثل DNS في المحاكاة) لا تظهر كنجاح كاذب.
-- **الواجهة:** قسم «Recovery verification» في لوحة الحادثة.
-- **الاختبار:** `test_agent_flow.py::test_recovery_is_verified_and_a_postmortem_is_written_and_learned`.
+- **ماذا يفعل:** المكوّن الوحيد الذي يلمس المختبر/المحاكي بعد موافقة إنسان + حكم Guardrail مسموح.
+- **متى يعمل:** فور اعتماد الإجراء (`execute_playbook`) بعد `policy_approve`.
+- **كيف يعمل خطوة بخطوة:**
+  1. يرفض إن لم يكن `verdict.allowed` أو `approvalStatus != approved`.
+  2. في **`sim`:** `Simulator.remediate()` يضبط المقاييس فورًا على الـbaseline الصحي، ثم `push_baseline()` يبثّ عيّنات نظيفة عبر الـpipeline/WebSocket — **تخضر الخريطة فورًا** دون انتظار ramp التعافي التدريجي.
+  3. في **`live`:** إن `verdict.execute` → `lab_client.call('/remediate/<scenario>')`؛ وإلا **Dry run** يسجّل الأوامر دون تغيير.
+  4. عند التنفيذ الفعلي يسجّل في حد معدل الـGuardrail.
+- **المدخلات / المخرجات:** مدخل: إجراء معتمد + سيناريو + وضع + `Verdict`. مخرج: `{executed, dryRun, target, commands}` (+ مخرج lab اختياري).
+- **مثال من الديمو:** بعد Approve على uplink-congestion تختفي مؤشرات الازدحام فورًا على الروابط/العقد المتأثرة في وضع المحاكاة.
+- **الضوابط + عند الفشل:** لا shell حر؛ لا يُعطَّل. الفشل ← `approvalStatus = failed` + Audit `execute_failed`.
+- **الكود والاختبار:** `agents/execution.py`, `collectors/simulator.py` (`remediate`, `push_baseline`) — `test_agent_flow.py` (reject→approve، dry run، lab whitelist، رفض بلا حكم).
 
-### 4.14 `learning` — وكيل التعلّم وما بعد الحادثة
-- **الفائدة:** الحادثة التالية من نفس السبب ترتفع ثقتها («شوهد N مرات»)، ويحصل الفريق على تقرير جاهز.
-- **كيف يعمل:** عند الإغلاق: يبني Postmortem (ملخص EN/AR، السبب والمرشحون، الأثر، الأدلة، Timeline، القرار ومن اتخذه، التحقق، KPIs: TTD/TTRCA/TTR/noise، أثر الوكلاء، ما سار جيدًا، تحسينات مقترحة حسب نوع السبب) ← يكتبه `data/postmortems/<id>.md` ← يحدّث `History` (`historical_support`) ← يفهرسه في `knowledge` (فتظهر الحادثة كمشابهة لاحقًا).
-- **الضوابط:** يكتب فقط في `data/postmortems`؛ **لا يغيّر الأوزان أو العتبات تلقائيًا**.
-- **API:** `GET /api/incidents/{id}/postmortem`.
-- **الاختبار:** `test_agent_flow.py::test_second_incident_finds_the_first_as_similar`.
+### 4.15 `verification` — وكيل التحقق
 
-### 4.15 `logs` — وكيل السجلات (Syslog) **جديد**
-- **الفائدة:** سقوط منفذ يُلتقط من سجل الجهاز نفسه خلال ثانية، على أي مصنّع تغطيه القاعدة، لا من الاستطلاع الدوري فقط.
-- **المهمة:** تحويل أسطر syslog الخام إلى أحداث موحّدة عبر أنماط المصنّعين في قاعدة المعرفة، وإدخال أحداث حالة الرابط في الـpipeline.
-- **المدخلات:** `POST /api/syslog` `{device, vendor?, lines[≤200]}` (نفس رمز الإدخال `X-RootIQ-Token` ونفس حد المعدل كـ`/api/events`).
-- **المخرجات:** لكل سطر `{parsed, vendor, event, interface, state, link, pushed, alsoMatches}` + حدث `syslog_link_down` (1 = سقط، 0 = عاد) على **الرابط** المقابل للمنفذ.
-- **كيف يعمل:** تنظيف السطر (حذف رموز التحكم، ≤ 1000 حرف) ← تلميح المصنّع من الطوبولوجيا (أو من الطلب) ← `parse_syslog` (أنماط 9 مصنّعين: Cisco IOS/NX-OS، Junos، Arista، Huawei VRP، MikroTik، Extreme، Linux، FortiOS (سجلات الأحداث)، وArubaOS-Switch (`port X is now off-line`)) ← توحيد اسم المنفذ (`GigabitEthernet0/0` = `Gi0/0`) ← `port_to_link` ← `pipeline.ingest`. الأحداث غير الخاصة بالمنافذ (OSPF/BGP/STP، وتغيير الإعداد `config_change` مثل `%SYS-5-CONFIG_I` عند Cisco/Arista و`UI_COMMIT` عند Junos) تُوحَّد وتُخزَّن ولا تفتح حادثة بمفردها.
-- **الصيغ المشتركة:** بعض الصيغ تخص أكثر من مصنّع (مثل `%LINEPROTO-5-UPDOWN` عند Cisco وArista)؛ يُفضَّل تلميح الجهاز في الطوبولوجيا، وإلا يُختار الأكثر شيوعًا مع إرجاع `alsoMatches`.
-- **الضوابط:** ما لا يُعرف يُعدّ `unparsed` ولا يُخمَّن؛ منفذ غير موجود في الطوبولوجيا لا يُرسل للـpipeline؛ لا يفتح حادثة إلا «سقوط» على رابط معروف.
-- **يحتاج:** أن تُضبط الأجهزة لإرسال syslog إلى المجمّع/الـAPI (المجمّع الحالي لا يشغّل مستمع UDP 514 بعد — انظر §10).
-- **الكود/الاختبار:** `agents/logs.py`, `api/vendors.py` — `test_vendor_agents.py` (`test_cisco_link_down_line_becomes_a_link_event_and_opens_an_incident` وأخواته).
+- **ماذا يفعل:** يثبت التعافي بالأرقام مقابل `plan.verification` — لا يفترض النجاح بمرور الوقت فقط.
+- **متى يعمل:** بعد التنفيذ وقبل/أثناء إغلاق الحادثة (`verify_recovery`).
+- **كيف يعمل خطوة بخطوة:**
+  1. يقرأ معايير الخطة ويقارنها بآخر قيم `StateStore`.
+  2. النتيجة: `verified | partial | unverified | no_criteria`.
+  3. في partial/unverified يقترح مراجعة التراجع/التصعيد.
+  4. بعد مؤقّت ~15 ث تنتظر الحادثة حتى `VERIFY_GRACE_S` ثم قد تُغلق كـ`unverified`.
+- **المدخلات / المخرجات:** مدخل: حادثة + معايير الخطة. مخرج: `incident.verification`.
+- **مثال من الديمو:** بعد snap-green في sim تتحقق معايير مثل `link_utilization < 70` بسرعة وتظهر في «Recovery verification».
+- **الضوابط + عند الفشل:** لا يغيّر البنية؛ لا يمنع الإغلاق للأبد. عند التعطيل: `verification = null` والإغلاق يكمل.
+- **الكود والاختبار:** `agents/verification.py` — `test_agent_flow.py::test_recovery_is_verified_and_a_postmortem_is_written_and_learned`.
 
-### 4.16 `vendor` — وكيل معرفة المصنّعين **جديد**
-- **الفائدة:** حادثة «أخطاء CRC» نفسها تحصل على أوامر Cisco IOS-XE أو Junos أو Arista EOS أو Huawei VRP أو MikroTik أو Linux الصحيحة، فلا يترجم المهندس بين واجهات الأوامر.
-- **المهمة:** (1) التعرّف على مصنّع/نظام/إصدار/موديل كل جهاز من `sysObjectID` و`sysDescr` وتلميح نصي؛ (2) مطابقة الحادثة مع أنماط مشاكل معروفة (25 نمطًا: ازدحام، CRC، duplex، flapping، err-disabled، STP، loop، MTU، LACP، OSPF/BGP، CPU/ذاكرة، حرارة/مراوح، PoE، بصريات، DHCP/DNS، NTP، SNMP، EoL…)؛ (3) توفير أوامر الفحص (قراءة فقط) وأوامر الإصلاح المرجعية (تحتاج موافقة) بلغة كل جهاز.
-- **المدخلات:** سبب جذري + المقاييس الشاذة في الحادثة + هوية الأجهزة من الطوبولوجيا.
-- **المخرجات:** `incident.vendorContext = {rootEntity, kind, devices[], problems[{id,title,causes,diagnose[],fixes[],verify}], known}`.
-- **كيف يعمل:** `devices_for(root)` (رابط ← طرفاه مع المنفذ؛ خدمة ← مضيفها؛ جهاز ← نفسه) ← `identify` لكل جهاز ← `problems_for(metrics, kind)` (مقاييس + نوع السبب، ويُستبعد ما لا ينطبق: خادم لا يُخبَر بحلقة L2) ← `checks_for` / `fix_commands` لكل جهاز.
-- **نموذج الإعداد وأسلوب الأوامر (جديد):** لكل جهاز يُرجع `vendorContext.devices[].configModel` = كيف يُطبَّق التغيير ويُحفظ ويُتراجَع عنه (`running-startup` / `candidate-commit` / `auto-save`) مع أوامر الدخول والحفظ ونقطة الاسترجاع والتغيير الآمن (`commit confirmed`، `reload in 5`، `commit timer`) وأسلوب كتابة الأوامر — لأن أبرز اختلاف بين Cisco وJuniper وFortinet وAruba وArista هو هنا. مرجعي للمهندس ولا يُنفَّذ. تفاصيل الخمسة في [`VENDORS.md`](VENDORS.md) §3b.
-- **التغطية بصراحة:** `full` (5: Cisco، Juniper، Arista، Huawei، HPE/Aruba)، `partial` (7)، `profile-only` (31 — تعريف فقط بلا أوامر). كل مصنّع له `confidence`. الموديلات على مستوى **العائلة/السلسلة** (103 عائلة) لا كل SKU. انظر `docs/VENDORS.md`.
-- **الضوابط:** أوامر القراءة تمر بقائمة سماح أفعال وقائمة منع أفعال (عند التحقق من البيانات وعند حكم الـGuardrail)؛ أوامر التغيير مسموحة فقط لـ`clear_counters` و`bounce_interface` وتحتاج موافقة؛ اسم المنفذ يُتحقق منه بنمط آمن؛ مصنّع غير معروف يُذكر «غير معروف» ولا يُخمَّن.
-- **API:** `GET /api/vendors` · `/api/vendors/{id}` · `/api/vendors/inventory` · `POST /api/vendors/identify` · `GET /api/problems` · `/api/problems/{id}?vendor=&os=&interface=`.
-- **الكود/الاختبار:** `agents/vendor.py`, `knowledge/loader.py`, `knowledge/data/` — `test_knowledge_base.py`, `test_vendor_agents.py`.
+### 4.16 `learning` — وكيل التعلّم وما بعد الحادثة
+
+- **ماذا يفعل:** يكتب تقرير ما بعد الحادثة، يحدّث التاريخ لرفع ثقة الحوادث التالية المشابهة، ويفهرس التقرير في المعرفة.
+- **متى يعمل:** عند إغلاق الحادثة عبر `orchestrator.closed` (`close_out`).
+- **كيف يعمل خطوة بخطوة:**
+  1. بناء Postmortem (ملخص EN/AR، سبب، أثر، Timeline، قرار، تحقق، KPIs: TTD/TTRCA/TTR/noise، أثر الوكلاء، تحسينات).
+  2. كتابة `data/postmortems/<id>.md`.
+  3. تحديث `History` (`historical_support`).
+  4. فهرستها في `knowledge` لتظهر كمشابهة لاحقًا.
+- **المدخلات / المخرجات:** مدخل: حادثة مغلقة (+ سياق ديمو اختياري). مخرج: تقرير + ملف Markdown؛ API: `GET /api/incidents/{id}/postmortem`.
+- **مثال من الديمو:** الحادثة الثانية من نفس السبب تجد الأولى كمشابهة وترتفع ثقتها («شوهد N مرات»).
+- **الضوابط + عند الفشل:** يكتب فقط تحت `data/postmortems`؛ **لا يغيّر أوزان/عتبات تلقائيًا**. عند التعطيل: يُسجَّل `history` فقط بدون تقرير.
+- **الكود والاختبار:** `agents/learning.py` — `test_agent_flow.py::test_second_incident_finds_the_first_as_similar`.
 
 ---
 
@@ -362,11 +431,23 @@ flowchart LR
 | Anthropic (Claude) | `anthropic` | `ANTHROPIC_API_KEY` | `claude-haiku-4-5-20251001` |
 | Google Gemini | `gemini` | `GEMINI_API_KEY` | `gemini-2.5-flash` |
 | Groq | `groq` | `GROQ_API_KEY` | `qwen/qwen3.8-27b` (تحقق منه فعليًا؛ `openai/gpt-oss-*` تعمل لكنها تستهلك رموزًا للتفكير) |
+| **Custom / OpenRouter** (أو أي خادم متوافق مع OpenAI) | `custom` | `CUSTOM_LLM_API_KEY` (اختياري لبعض الخوادم المحلية) | فارغ افتراضيًا — عيّن مثل `openai/gpt-4o-mini` لـOpenRouter |
 
-- التفعيل: `LLM_ENABLED=1` + المزوّد + مفتاحه. بدونها كل شيء حتمي ويعمل بلا إنترنت.
-- **ما يُرسل للمزوّد:** JSON الحقائق المقاسة + السؤال + مقاطع مسترجعة (بعد حجب الأسرار). لا مفاتيح ولا إعدادات أجهزة خام. للبيئات ذات سيادة البيانات: اترك LLM مغلقًا أو اختر مزوّدًا داخليًا لاحقًا.
+**مثال OpenRouter:**
+```
+LLM_ENABLED=1
+LLM_PROVIDER=custom
+LLM_BASE_URL=https://openrouter.ai/api/v1
+CUSTOM_LLM_API_KEY=sk-or-v1-...
+LLM_MODEL=openai/gpt-4o-mini
+```
+`LLM_BASE_URL` مطلوب لمزوّد `custom` (Ollama / vLLM / Hugging Face / OpenRouter…).
+
+- التفعيل: `LLM_ENABLED=1` + المزوّد + مفتاحه (أو عنوان custom). بدونها كل شيء حتمي ويعمل بلا إنترنت.
+- **أين يُستخدم:** (1) `explanation` و`copilot` — إعادة صياغة مسودة موثّقة؛ (2) `knowledge` و`vendor` عبر `llm/reference.py` `advise()` — مرجع استشاري فقط عند فراغ KB، يُرفض إن فشل `grounded()`.
+- **ما يُرسل للمزوّد:** JSON الحقائق المقاسة + السؤال/الفجوة + مقاطع مسترجعة (بعد حجب الأسرار). لا مفاتيح ولا إعدادات أجهزة خام. للبيئات ذات سيادة البيانات: اترك LLM مغلقًا أو اختر مزوّدًا داخليًا.
 - **المراقبة:** `GET /api/agents` ← `health.llm.usage` = `{calls, errors, avgMs, approxTokensIn/Out}`.
-- **الحماية من الهلوسة:** `grounded()` (كل رقم في الجواب ⊂ أرقام الحقائق/السياق) + شرط الاستشهاد؛ الفشل ← جواب حتمي. أسماء النماذج الافتراضية قابلة للتغيير من البيئة — تحقق منها مع المزوّد قبل الاستخدام.
+- **الحماية من الهلوسة:** `grounded()` (كل رقم في الجواب ⊂ أرقام الحقائق/السياق) + شرط الاستشهاد؛ الفشل ← جواب حتمي / عدم إرفاق `aiReference`. أسماء النماذج الافتراضية قابلة للتغيير من البيئة — تحقق منها مع المزوّد قبل الاستخدام.
 - **حراسات إضافية على جواب الـCopilot:** يُرفض الجواب إن كان اعتذارًا («لا أعرف/لا تحتوي…») بينما المسودة الموثّقة تحوي الجواب، أو إن أسقط كل النسب المئوية التي في المسودة. والرسائل الثابتة (رفض التنفيذ، «لا توجد حادثة»، «لم أجد») لا تُرسل للنموذج أصلًا. وإعادة الصياغة تتم على **مسودة النظام الموثّقة** (لا يجيب النموذج من رأسه).
 - **حد المعدل (429):** يدخل العميل في فترة تهدئة بقدر `Retry-After` (بحد أقصى 60 ث) فيعود كل شيء فورًا للجواب الحتمي بدل الانتظار؛ وتظهر `rateLimited/skipped/cooldownSeconds` في `health.llm.usage`. أخطاء المزوّد تُسجَّل في السجل (`rootiq.llm`) ولا تُبتلع بصمت.
 - **اختُبرت بمفتاح Groq حقيقي (2026-09-28):** التفسير والـCopilot يعملان بمصدر `llm` بأرقام مؤسَّسة، 10 استدعاءات بلا أخطاء (متوسط ~1.1 ث). الملاحظات: نموذج Groq الافتراضي القديم `llama-3.3-70b-versatile` **لم يعد متاحًا** فتغيّر الافتراضي؛ وحساب Groq المجاني له حد **1000 رمز إخراج/دقيقة** لنموذج `qwen` (يحسب `max_tokens` المطلوب) فخُفِّضت `max_tokens` (120 للشرح، 220 للمساعد) وأُضيفت فترة التهدئة.
@@ -394,7 +475,7 @@ flowchart LR
 | GET | `/api/syslog/recent` | آخر الأحداث الموحّدة وإحصاءات المصنّعين |
 | WS | `agent_step` | خطوة وكيل جديدة (بجانب `snapshot/link/node/service/alert/incident/demo`) |
 
-حقول جديدة اختيارية في الحادثة: `verification`, `knowledge`, `vendorContext`, `acknowledgedBy/At`؛ وفي الإجراء: `plan` (وفيه `vendorCommands`), `guardrailWarnings`, `dryRun`. كود الحالة الجديد: **403** عند رفض Guardrail لـ`approve/reject`.
+حقول جديدة اختيارية في الحادثة: `verification`, `knowledge` (وفيه `similar`, `references`, `aiReference?`), `vendorContext` (وفيه `devices`, `problems`, `aiReference?`), `acknowledgedBy/At`؛ وفي الإجراء: `plan` (وفيه `vendorCommands`), `guardrailWarnings`, `dryRun`. كود الحالة الجديد: **403** عند رفض Guardrail لـ`approve/reject`.
 
 ---
 
@@ -403,9 +484,11 @@ flowchart LR
 | المتغير | الافتراضي | المعنى |
 |---|---|---|
 | `LLM_ENABLED` | `0` | تفعيل طبقة الـLLM الاختيارية |
-| `LLM_PROVIDER` | `anthropic` | `anthropic` \| `gemini` \| `groq` |
-| `LLM_MODEL` | (فارغ) | فارغ = الافتراضي للمزوّد |
-| `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `GROQ_API_KEY` | (فارغ) | مفتاح المزوّد (لا يُخزَّن في المستودع) |
+| `LLM_PROVIDER` | `anthropic` | `anthropic` \| `gemini` \| `groq` \| `custom` |
+| `LLM_MODEL` | (فارغ) | فارغ = الافتراضي للمزوّد؛ لـOpenRouter عيّن مثل `openai/gpt-4o-mini` |
+| `LLM_BASE_URL` | (فارغ) | مطلوب لمزوّد `custom` (مثل `https://openrouter.ai/api/v1`) |
+| `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `GROQ_API_KEY` | (فارغ) | مفتاح المزوّد المسمّى (لا يُخزَّن في المستودع) |
+| `CUSTOM_LLM_API_KEY` | (فارغ) | مفتاح مزوّد `custom` / OpenRouter (اختياري لبعض الخوادم المحلية) |
 | `ROOTIQ_EXECUTION_ENABLED` | `1` | `0` ← تنفيذ المختبر الحي يصير Dry run |
 | `AGENT_TIMEOUT_S` | `8` | مهلة كل وكيل اختياري |
 | `VERIFY_GRACE_S` | `30` | أقصى انتظار إضافي (بعد 15 ث) لتحقق معايير التعافي قبل الإغلاق |
