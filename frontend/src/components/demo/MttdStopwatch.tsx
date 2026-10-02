@@ -6,6 +6,7 @@ interface Props {
   analyzedAt?: string | null;
 }
 
+/** Compact MTTD chip — parent places it in the top dock. */
 export function MttdStopwatch({ injectedAt, analyzedAt }: Props) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -29,31 +30,29 @@ export function MttdStopwatch({ injectedAt, analyzedAt }: Props) {
   const underTarget = seconds < 60;
 
   return (
-    <div className="absolute left-1/2 top-16 z-30 -translate-x-1/2">
+    <div
+      className={clsx(
+        'rq-panel flex items-center gap-3 px-4 py-1.5',
+        frozen ? (underTarget ? 'rq-panel--ok' : 'rq-panel--warn') : 'rq-panel--quiet',
+      )}
+    >
+      <div className="rq-kicker whitespace-nowrap">Time to root cause</div>
       <div
         className={clsx(
-          'rq-panel px-8 py-3 text-center',
-          frozen ? (underTarget ? 'rq-panel--ok' : 'rq-panel--warn') : 'rq-panel--quiet',
+          'rq-stopwatch text-2xl leading-none',
+          frozen ? (underTarget ? 'text-ok' : 'text-warn') : 'text-[var(--brand-text)]',
         )}
       >
-        <div className="rq-kicker">Time to root cause</div>
-        <div
-          className={clsx(
-            'rq-stopwatch mt-1',
-            frozen ? (underTarget ? 'text-ok' : 'text-warn') : 'text-[var(--brand-text)]',
-          )}
-        >
-          {seconds.toFixed(1)}
-          <span className="ms-1 text-lg font-normal opacity-70">s</span>
-        </div>
-        {frozen ? (
-          <div className={clsx('mt-1 text-[11px]', underTarget ? 'text-ok' : 'text-warn')}>
-            target &lt; 60s
-          </div>
-        ) : (
-          <div className="mt-1 text-[11px] text-[var(--text-3)]">detecting…</div>
-        )}
+        {seconds.toFixed(1)}
+        <span className="ms-0.5 text-sm font-normal opacity-70">s</span>
       </div>
+      {frozen ? (
+        <div className={clsx('text-[10px]', underTarget ? 'text-ok' : 'text-warn')}>
+          &lt; 60s
+        </div>
+      ) : (
+        <div className="text-[10px] text-[var(--text-3)]">detecting…</div>
+      )}
     </div>
   );
 }

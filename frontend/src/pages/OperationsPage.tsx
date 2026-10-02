@@ -27,7 +27,6 @@ export function OperationsPage() {
       .filter((i) => i.status !== 'resolved')
       .sort((a, b) => b.openedAt.localeCompare(a.openedAt));
     if (open[0]) return open[0];
-    // Keep last resolved visible after recovery (presenter + e2e)
     if (demo.state === 'recovered') {
       return (
         list
@@ -72,26 +71,61 @@ export function OperationsPage() {
   const selectedLink =
     selection?.kind === 'link' ? topology.links.find((l) => l.id === selection.id) : undefined;
 
+  const showSideInspectors = !active && (selectedNode || selectedLink);
+
   return (
     <div className="relative h-full w-full">
-      <TopologyCanvas
-        topology={topology}
-        focus={focus}
-        onSelect={select}
-        onLayoutSaved={(positions) => void api.saveLayout(positions)}
-      />
+      {/* Topology stays full-bleed; overlays sit in reserved lanes */}
+      <div
+        className="absolute inset-0"
+        style={{
+          // Keep map readable beside the side rails
+          paddingInlineStart: 'min(320px, 28vw)',
+          paddingInlineEnd: active || showSideInspectors ? 'var(--incident-w)' : 0,
+          paddingTop: '3.25rem',
+        }}
+      >
+        <TopologyCanvas
+          topology={topology}
+          focus={focus}
+          onSelect={select}
+          onLayoutSaved={(positions) => void api.saveLayout(positions)}
+        />
+      </div>
 
-      <AlertStorm incident={active} />
-      <MttdStopwatch
-        injectedAt={demo.injectedAt ?? active?.timings.injectedAt}
-        analyzedAt={active?.timings.analyzedAt}
-      />
-      <ServicesPanel services={topology.services} dnsSuppressed={dnsSuppressed} />
-      <DemoControls />
+      {/* Top dock: simulator + MTTD — clear of side rails */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-start justify-center gap-2 px-3 py-2"
+        style={{
+          paddingInlineStart: 'calc(min(320px, 28vw) + 8px)',
+          paddingInlineEnd: active || showSideInspectors ? 'calc(var(--incident-w) + 8px)' : '12px',
+        }}
+      >
+        <div className="pointer-events-auto flex max-w-full flex-wrap items-start justify-center gap-2">
+          <DemoControls />
+          <MttdStopwatch
+            injectedAt={demo.injectedAt ?? active?.timings.injectedAt}
+            analyzedAt={active?.timings.analyzedAt}
+          />
+        </div>
+      </div>
+
+      {/* Start rail: alert analysis + services (stacked, no overlap on map) */}
+      <div className="pointer-events-none absolute bottom-2 start-2 top-2 z-20 flex w-[min(300px,26vw)] flex-col gap-2">
+        <div className="pointer-events-auto flex min-h-0 flex-1 flex-col gap-2">
+          <AlertStorm incident={active} fill />
+          <div className="shrink-0">
+            <ServicesPanel services={topology.services} dnsSuppressed={dnsSuppressed} />
+          </div>
+        </div>
+      </div>
 
       {!active && demo.state !== 'recovered' && (
-        <div className="pointer-events-none absolute end-3 top-16 z-10 flex items-center gap-2 border border-[var(--ok)] bg-[var(--ok-soft)] px-4 py-2 text-sm text-ok">
-          <ShieldCheck className="size-4" />
+        <div
+          className="pointer-events-none absolute top-14 z-10 flex items-center gap-2 border border-[var(--ok)] bg-[var(--ok-soft)] px-3 py-1.5 text-xs text-ok"
+          style={{ insetInlineEnd: '12px' }}
+        >
+          <ShieldCheck className="size-3.5" />
           {t('incident.empty')}
         </div>
       )}
