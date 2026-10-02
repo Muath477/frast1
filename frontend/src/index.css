@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Map legacy Tailwind color names → brand semantic tokens so existing classes pick up the identity */
+/* Map legacy Tailwind color names → brand semantic tokens (colors unchanged) */
 @theme {
   --color-noc-bg: var(--bg-app);
   --color-noc-panel: var(--bg-panel);
@@ -38,6 +38,86 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ---- Shape system: instrument / NOC panels (geometry only) ---- */
+.rq-panel {
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.rq-panel::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  background: var(--brand);
+  pointer-events: none;
+}
+.rq-panel--warn::before { background: var(--warn); }
+.rq-panel--crit::before { background: var(--crit); }
+.rq-panel--ok::before { background: var(--ok); }
+.rq-panel--quiet::before { background: var(--border-strong); }
+
+.rq-float {
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.rq-slab-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.rq-kicker {
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.rq-metric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-medium);
+  line-height: 1;
+}
+
+.rq-divider-v {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
+.rq-stage {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  background: var(--bg-raised);
+}
+.rq-stage.is-done,
+.rq-stage.is-current {
+  background: var(--brand);
+}
+.rq-stage.is-current {
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
 @keyframes rootiq-dash {
   to {
     stroke-dashoffset: -32;
@@ -54,7 +134,7 @@ body {
     filter: drop-shadow(0 0 2px var(--topo-root));
   }
   50% {
-    filter: drop-shadow(0 0 8px var(--topo-root));
+    filter: drop-shadow(0 0 6px var(--topo-root));
   }
 }
 
@@ -62,7 +142,6 @@ body {
   animation: rootiq-glow 1.4s ease-in-out infinite;
 }
 
-/* Presenter: brand tokens use data-presenter; keep class for hide/idle */
 html.presenter-mode,
 html[data-presenter="on"] {
   font-size: 18px;
@@ -78,13 +157,12 @@ html.presenter-idle * {
   cursor: none !important;
 }
 
-/* Mode badges (TopBar) */
 .mode-badge {
-  border-radius: var(--r-sm);
-  padding: 2px 8px;
+  border-radius: 0;
+  padding: 3px 10px;
   font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.02em;
   text-transform: none;
 }
 .mode-badge--sim {
@@ -99,24 +177,14 @@ html.presenter-idle * {
   animation: rq-live-pulse 2.4s var(--ease-out) infinite;
 }
 
-/* Floating panels over topology */
-.rq-float {
-  background: var(--bg-float);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-float);
-}
-
-/* Primary action — only Approve uses this */
 .rq-btn-primary {
   background: var(--brand);
   color: var(--text-on-brand);
-  border-radius: var(--r-md);
+  border-radius: 0;
   height: 36px;
   font-weight: var(--fw-semibold);
   font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
 }
 .rq-btn-primary:hover {
   background: var(--brand-hover);
@@ -126,14 +194,29 @@ html.presenter-idle * {
 }
 
 .rq-btn-secondary {
-  background: var(--bg-raised);
+  background: transparent;
   color: var(--text-1);
   border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  border-radius: 0;
   height: 36px;
   font-size: var(--fs-xs);
 }
 .rq-btn-secondary:hover {
   border-color: var(--border-strong);
   background: var(--bg-hover);
+}
+
+/* Flatten default soft cards across the app */
+.rounded-xl,
+.rounded-2xl,
+.rounded-lg {
+  border-radius: var(--r-md) !important;
+}
+.rounded-full {
+  border-radius: var(--r-sm) !important;
+}
+.shadow-xl,
+.shadow-2xl,
+.shadow-lg {
+  box-shadow: none !important;
 }

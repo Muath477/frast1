@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
@@ -14,6 +15,17 @@ class ModeBody(BaseModel):
     mode: str
 
 
+async def _lab(path: str) -> dict:
+    """Call the lab agent; surface connection failures as 503 instead of 500."""
+    try:
+        return await lab_client.call(path)
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPError) as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Live lab agent unreachable ({e}). Switch TopBar to Simulation, or start the lab agent.",
+        ) from e
+
+
 @router.post("/inject/{scenario}")
 async def inject(scenario: str, request: Request):
     st = request.app.state
@@ -24,7 +36,7 @@ async def inject(scenario: str, request: Request):
     if st.demo["mode"] == "sim":
         st.simulator.inject(scenario)
     else:
-        await lab_client.call(f"/inject/{scenario}")
+        await _lab(f"/inject/{scenario}")
     st.demo.update(
         scenario=scenario,
         state="injected",
@@ -40,7 +52,7 @@ async def reset(request: Request):
     if st.demo["mode"] == "sim":
         st.simulator.reset()
     else:
-        await lab_client.call("/reset")
+        await _lab("/reset")
     await st.incidents.archive_all()
     st.detector.active.clear()
     st.detector.alert_level.clear()

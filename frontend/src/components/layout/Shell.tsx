@@ -87,7 +87,7 @@ export function Shell() {
         <Outlet />
       </main>
 
-      <footer className="col-start-2 min-h-0 overflow-hidden border-t border-noc-line bg-noc-panel px-3">
+      <footer className="col-start-2 min-h-0 overflow-hidden border-t border-noc-line bg-noc-panel">
         <Timeline />
       </footer>
     </div>
