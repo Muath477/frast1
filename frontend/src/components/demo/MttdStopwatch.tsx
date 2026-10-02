@@ -29,29 +29,31 @@ export function MttdStopwatch({ injectedAt, analyzedAt }: Props) {
   const underTarget = seconds < 60;
 
   return (
-    <div
-      className={clsx(
-        'rq-panel absolute left-1/2 top-3 z-30 -translate-x-1/2 px-8 py-3 text-center',
-        frozen ? (underTarget ? 'rq-panel--ok' : 'rq-panel--warn') : 'rq-panel--quiet',
-      )}
-    >
-      <div className="rq-kicker">Time to root cause</div>
+    <div className="absolute left-1/2 top-16 z-30 -translate-x-1/2">
       <div
         className={clsx(
-          'rq-stopwatch mt-1',
-          frozen ? (underTarget ? 'text-ok' : 'text-warn') : 'text-[var(--brand-text)]',
+          'rq-panel px-8 py-3 text-center',
+          frozen ? (underTarget ? 'rq-panel--ok' : 'rq-panel--warn') : 'rq-panel--quiet',
         )}
       >
-        {seconds.toFixed(1)}
-        <span className="ms-1 text-lg font-normal opacity-70">s</span>
-      </div>
-      {frozen ? (
-        <div className={clsx('mt-1 text-[11px]', underTarget ? 'text-ok' : 'text-warn')}>
-          target &lt; 60s
+        <div className="rq-kicker">Time to root cause</div>
+        <div
+          className={clsx(
+            'rq-stopwatch mt-1',
+            frozen ? (underTarget ? 'text-ok' : 'text-warn') : 'text-[var(--brand-text)]',
+          )}
+        >
+          {seconds.toFixed(1)}
+          <span className="ms-1 text-lg font-normal opacity-70">s</span>
         </div>
-      ) : (
-        <div className="mt-1 text-[11px] text-[var(--text-3)]">detecting…</div>
-      )}
+        {frozen ? (
+          <div className={clsx('mt-1 text-[11px]', underTarget ? 'text-ok' : 'text-warn')}>
+            target &lt; 60s
+          </div>
+        ) : (
+          <div className="mt-1 text-[11px] text-[var(--text-3)]">detecting…</div>
+        )}
+      </div>
     </div>
   );
 }
