@@ -1,10 +1,21 @@
+"""Simulated telemetry for the lab topology.
+
+Demo spine metrics (BASELINE_CORE + SCENARIOS) stay frozen so RCA demos keep working.
+Healthy campus fabric metrics are derived from configs/topology.json so new devices
+look alive without stealing the three demo scenarios.
+"""
+from __future__ import annotations
+
 import asyncio
+import json
 import random
 from datetime import datetime, timezone
+from pathlib import Path
 
+from app.core.config import settings
 from app.schemas.event import Event
 
-BASELINE = [
+BASELINE_CORE = [
     ("link-r1-sw1", "link", "link_utilization", "percent", 14, 3),
     ("link-r1-sw1", "link", "link_latency_ms", "ms", 2.5, 0.6),
     ("link-r1-sw1", "link", "link_packet_loss", "percent", 0, 0),
@@ -44,6 +55,57 @@ SCENARIOS = {
         (6, "svc-dns", "dns_latency_ms", 160, 6),
     ],
 }
+
+
+def _stable(seed: str, lo: int, hi: int) -> int:
+    h = sum(ord(c) for c in seed) % (hi - lo + 1)
+    return lo + h
+
+
+def _campus_baseline(topo_path: str | Path | None = None) -> list[tuple]:
+    """Healthy metrics for every topology entity not already covered by BASELINE_CORE."""
+    path = Path(topo_path or settings.topology_path)
+    if not path.exists():
+        return []
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    covered = {e for e, _, _, _, _, _ in BASELINE_CORE}
+    out: list[tuple] = []
+
+    for link in raw.get("links", []):
+        lid = link["id"]
+        if lid in covered:
+            continue
+        util = _stable(lid, 4, 18)
+        out.append((lid, "link", "link_utilization", "percent", util, 2))
+        out.append((lid, "link", "link_latency_ms", "ms", round(0.4 + util * 0.05, 2), 0.2))
+
+    for node in raw.get("nodes", []):
+        nid, ntype = node["id"], node["type"]
+        if nid in covered:
+            continue
+        if ntype in ("server", "collector"):
+            out.append((nid, "server", "cpu_percent", "percent", _stable(nid + ":cpu", 8, 28), 3))
+            out.append((nid, "server", "mem_percent", "percent", _stable(nid + ":mem", 30, 55), 2))
+
+    for svc in raw.get("services", []):
+        sid = svc["id"]
+        if sid in covered:
+            continue
+        port = int(svc.get("port") or 0)
+        if port in (53, 389):
+            out.append((sid, "service", "dns_success_rate", "percent", 100, 0))
+            out.append((sid, "service", "dns_latency_ms", "ms", _stable(sid, 2, 8), 1))
+        elif port in (25, 445):
+            out.append((sid, "service", "http_ok", "bool", 1, 0))
+            out.append((sid, "service", "http_latency_ms", "ms", _stable(sid, 20, 60), 5))
+        else:
+            out.append((sid, "service", "http_ok", "bool", 1, 0))
+            out.append((sid, "service", "http_latency_ms", "ms", _stable(sid, 30, 90), 6))
+
+    return out
+
+
+BASELINE = BASELINE_CORE + _campus_baseline()
 
 
 class Simulator:

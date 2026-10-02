@@ -1,27 +1,263 @@
 {
   "version": 1,
-  "site": "RootIQ Lab",
+  "site": "RootIQ HQ — Campus A",
   "vantage": "collector01",
   "nodes": [
     {
-      "id": "r1",
+      "id": "wan-r1",
       "type": "router",
-      "label": "R1",
-      "vendor": "Cisco vIOS",
-      "managementIp": "10.10.10.1",
-      "position": { "x": 420, "y": 40 },
+      "label": "WAN-EDGE",
+      "zone": "edge",
+      "vendor": "Cisco ASR",
+      "managementIp": "10.10.1.1",
+      "position": { "x": 420, "y": -420 },
       "interfaces": [
-        { "name": "Gi0/0", "ifIndex": 1, "side": "bottom", "speedMbps": 10, "description": "UPLINK-TO-SW1 (shaped 10M)" },
-        { "name": "Gi0/1", "ifIndex": 2, "side": "bottom", "speedMbps": 1000, "description": "LINK-TO-SW2" }
+        { "name": "Gi0/0", "ifIndex": 1, "side": "bottom", "speedMbps": 1000, "description": "TO-CORE-R2" },
+        { "name": "Gi0/1", "ifIndex": 2, "side": "bottom", "speedMbps": 1000, "description": "TO-FW1" },
+        { "name": "Gi0/2", "ifIndex": 3, "side": "top", "speedMbps": 1000, "description": "MPLS-PRIMARY" }
       ]
     },
     {
+      "id": "fw1",
+      "type": "router",
+      "label": "FW-EDGE",
+      "zone": "edge",
+      "vendor": "Fortinet FortiGate",
+      "sysDescr": "FortiGate-VM64",
+      "managementIp": "10.10.10.5",
+      "position": { "x": 680, "y": -420 },
+      "interfaces": [
+        { "name": "port1", "ifIndex": 1, "side": "bottom", "speedMbps": 1000, "description": "TO-R1" },
+        { "name": "port2", "ifIndex": 2, "side": "top", "speedMbps": 1000, "description": "TO-WAN" },
+        { "name": "port3", "ifIndex": 3, "side": "right", "speedMbps": 1000, "description": "TO-DMZ" }
+      ]
+    },
+    {
+      "id": "dmz-sw1",
+      "type": "switch",
+      "label": "DMZ-SW1",
+      "zone": "edge",
+      "vendor": "Cisco Catalyst 9300",
+      "managementIp": "10.50.1.11",
+      "position": { "x": 980, "y": -420 },
+      "interfaces": [
+        { "name": "Gi1/0/1", "ifIndex": 1, "side": "left", "speedMbps": 1000 },
+        { "name": "Gi1/0/10", "ifIndex": 10, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "web-dmz01",
+      "type": "server",
+      "label": "WEB-DMZ",
+      "zone": "edge",
+      "vendor": "Ubuntu 24.04",
+      "managementIp": "10.50.10.10",
+      "position": { "x": 980, "y": -240 },
+      "interfaces": [{ "name": "eth0", "side": "top", "speedMbps": 1000 }]
+    },
+
+    {
+      "id": "core-r2",
+      "type": "router",
+      "label": "CORE-R2",
+      "zone": "core",
+      "vendor": "Cisco IOS-XE",
+      "managementIp": "10.10.10.2",
+      "position": { "x": 320, "y": -80 },
+      "interfaces": [
+        { "name": "Gi0/0", "ifIndex": 1, "side": "bottom", "speedMbps": 10000, "description": "TO-R1" },
+        { "name": "Gi0/1", "ifIndex": 2, "side": "left", "speedMbps": 10000, "description": "TO-DIST-A" },
+        { "name": "Gi0/2", "ifIndex": 3, "side": "right", "speedMbps": 10000, "description": "TO-DIST-B" },
+        { "name": "Gi0/3", "ifIndex": 4, "side": "top", "speedMbps": 1000, "description": "TO-WAN" }
+      ]
+    },
+    {
+      "id": "r1",
+      "type": "router",
+      "label": "CORE-R1",
+      "zone": "core",
+      "vendor": "Cisco vIOS",
+      "managementIp": "10.10.10.1",
+      "position": { "x": 560, "y": -80 },
+      "interfaces": [
+        { "name": "Gi0/0", "ifIndex": 1, "side": "bottom", "speedMbps": 10, "description": "UPLINK-TO-SW1 (shaped 10M)" },
+        { "name": "Gi0/1", "ifIndex": 2, "side": "bottom", "speedMbps": 1000, "description": "LINK-TO-SW2" },
+        { "name": "Gi0/2", "ifIndex": 3, "side": "left", "speedMbps": 10000, "description": "TO-DIST-A" },
+        { "name": "Gi0/3", "ifIndex": 4, "side": "right", "speedMbps": 10000, "description": "TO-DIST-B" },
+        { "name": "Gi0/4", "ifIndex": 5, "side": "top", "speedMbps": 10000, "description": "TO-CORE-R2" },
+        { "name": "Gi0/5", "ifIndex": 6, "side": "top", "speedMbps": 1000, "description": "TO-FW1" }
+      ]
+    },
+    {
+      "id": "dist-a",
+      "type": "switch",
+      "label": "DIST-A",
+      "zone": "core",
+      "vendor": "Cisco Catalyst 9500",
+      "managementIp": "10.10.10.11",
+      "position": { "x": 80, "y": -80 },
+      "interfaces": [
+        { "name": "Te1/0/1", "ifIndex": 1, "side": "right", "speedMbps": 10000 },
+        { "name": "Te1/0/2", "ifIndex": 2, "side": "top", "speedMbps": 10000 },
+        { "name": "Gi1/0/1", "ifIndex": 11, "side": "bottom", "speedMbps": 1000 },
+        { "name": "Gi1/0/2", "ifIndex": 12, "side": "bottom", "speedMbps": 1000 },
+        { "name": "Gi1/0/3", "ifIndex": 13, "side": "left", "speedMbps": 1000 },
+        { "name": "Gi1/0/4", "ifIndex": 14, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "dist-b",
+      "type": "switch",
+      "label": "DIST-B",
+      "zone": "core",
+      "vendor": "Arista 7050",
+      "sysDescr": "Arista Networks EOS",
+      "managementIp": "10.10.10.12",
+      "position": { "x": 800, "y": -80 },
+      "interfaces": [
+        { "name": "Ethernet1", "ifIndex": 1, "side": "left", "speedMbps": 10000 },
+        { "name": "Ethernet2", "ifIndex": 2, "side": "top", "speedMbps": 10000 },
+        { "name": "Ethernet11", "ifIndex": 11, "side": "bottom", "speedMbps": 1000 },
+        { "name": "Ethernet12", "ifIndex": 12, "side": "bottom", "speedMbps": 1000 },
+        { "name": "Ethernet13", "ifIndex": 13, "side": "right", "speedMbps": 1000 },
+        { "name": "Ethernet14", "ifIndex": 14, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+
+    {
+      "id": "acc-a1",
+      "type": "switch",
+      "label": "ACC-A1 Fl.1",
+      "zone": "building-a",
+      "vendor": "Cisco Catalyst 9300",
+      "managementIp": "10.20.1.11",
+      "position": { "x": -280, "y": 220 },
+      "interfaces": [
+        { "name": "Gi1/0/1", "ifIndex": 1, "side": "top", "speedMbps": 1000 },
+        { "name": "Gi1/0/48", "ifIndex": 48, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "acc-a2",
+      "type": "switch",
+      "label": "ACC-A2 Fl.2",
+      "zone": "building-a",
+      "vendor": "Cisco Catalyst 9300",
+      "managementIp": "10.20.2.11",
+      "position": { "x": -80, "y": 220 },
+      "interfaces": [
+        { "name": "Gi1/0/1", "ifIndex": 1, "side": "top", "speedMbps": 1000 },
+        { "name": "Gi1/0/48", "ifIndex": 48, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "acc-a3",
+      "type": "switch",
+      "label": "ACC-A3 Fl.3",
+      "zone": "building-a",
+      "vendor": "Juniper EX4300",
+      "sysDescr": "Juniper Networks EX4300",
+      "managementIp": "10.20.3.11",
+      "position": { "x": -280, "y": 400 },
+      "interfaces": [
+        { "name": "ge-0/0/0", "ifIndex": 1, "side": "top", "speedMbps": 1000 },
+        { "name": "ge-0/0/47", "ifIndex": 47, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "mon01",
+      "type": "server",
+      "label": "MON-01",
+      "zone": "building-a",
+      "vendor": "Ubuntu 24.04",
+      "managementIp": "10.40.10.50",
+      "position": { "x": -80, "y": 400 },
+      "interfaces": [
+        { "name": "eth0", "side": "top", "speedMbps": 1000 },
+        { "name": "eth1", "side": "right", "speedMbps": 1000 }
+      ]
+    },
+
+    {
+      "id": "acc-b1",
+      "type": "switch",
+      "label": "ACC-B1 Fl.1",
+      "zone": "building-b",
+      "vendor": "Cisco Catalyst 9300",
+      "managementIp": "10.30.1.11",
+      "position": { "x": 1040, "y": 220 },
+      "interfaces": [
+        { "name": "Gi1/0/1", "ifIndex": 1, "side": "top", "speedMbps": 1000 },
+        { "name": "Gi1/0/48", "ifIndex": 48, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "acc-b2",
+      "type": "switch",
+      "label": "ACC-B2 Fl.2",
+      "zone": "building-b",
+      "vendor": "Arista 720XP",
+      "managementIp": "10.30.2.11",
+      "position": { "x": 1240, "y": 220 },
+      "interfaces": [
+        { "name": "Ethernet1", "ifIndex": 1, "side": "top", "speedMbps": 1000 },
+        { "name": "Ethernet48", "ifIndex": 48, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "acc-b3",
+      "type": "switch",
+      "label": "ACC-B3 Fl.3",
+      "zone": "building-b",
+      "vendor": "Cisco Catalyst 9300",
+      "managementIp": "10.30.3.11",
+      "position": { "x": 1440, "y": 220 },
+      "interfaces": [
+        { "name": "Gi1/0/1", "ifIndex": 1, "side": "top", "speedMbps": 1000 },
+        { "name": "Gi1/0/48", "ifIndex": 48, "side": "bottom", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "wlc1",
+      "type": "switch",
+      "label": "WLC-01",
+      "zone": "building-b",
+      "vendor": "Cisco Catalyst 9800",
+      "managementIp": "10.10.10.50",
+      "position": { "x": 1040, "y": 400 },
+      "interfaces": [
+        { "name": "Gi0/0/1", "ifIndex": 1, "side": "top", "speedMbps": 1000 }
+      ]
+    },
+    {
+      "id": "mail01",
+      "type": "server",
+      "label": "MAIL-01",
+      "zone": "building-b",
+      "vendor": "Ubuntu 24.04",
+      "managementIp": "10.30.10.10",
+      "position": { "x": 1240, "y": 400 },
+      "interfaces": [{ "name": "eth0", "side": "top", "speedMbps": 1000 }]
+    },
+    {
+      "id": "files01",
+      "type": "server",
+      "label": "FILES-01",
+      "zone": "building-b",
+      "vendor": "Windows Server 2022",
+      "managementIp": "10.30.10.20",
+      "position": { "x": 1440, "y": 400 },
+      "interfaces": [{ "name": "eth0", "side": "top", "speedMbps": 1000 }]
+    },
+
+    {
       "id": "sw1",
       "type": "switch",
-      "label": "SW1",
+      "label": "SW1-DEMO",
+      "zone": "demo",
       "vendor": "Cisco vIOS-L2",
       "managementIp": "10.10.20.11",
-      "position": { "x": 180, "y": 260 },
+      "position": { "x": 320, "y": 220 },
       "interfaces": [
         { "name": "Gi0/1", "ifIndex": 2, "side": "top", "speedMbps": 1000 },
         { "name": "Gi0/3", "ifIndex": 4, "side": "bottom", "speedMbps": 1000 }
@@ -30,10 +266,11 @@
     {
       "id": "sw2",
       "type": "switch",
-      "label": "SW2",
+      "label": "SW2-DEMO",
+      "zone": "demo",
       "vendor": "Cisco vIOS-L2",
       "managementIp": "10.10.30.12",
-      "position": { "x": 660, "y": 260 },
+      "position": { "x": 640, "y": 220 },
       "interfaces": [
         { "name": "Gi0/1", "ifIndex": 2, "side": "top", "speedMbps": 1000 },
         { "name": "Gi0/3", "ifIndex": 4, "side": "bottom", "speedMbps": 1000 }
@@ -43,9 +280,10 @@
       "id": "app01",
       "type": "server",
       "label": "APP-01",
+      "zone": "demo",
       "vendor": "Ubuntu 24.04",
       "managementIp": "10.10.20.10",
-      "position": { "x": 180, "y": 480 },
+      "position": { "x": 320, "y": 400 },
       "interfaces": [
         { "name": "eth0", "side": "top", "speedMbps": 1000 }
       ]
@@ -54,11 +292,94 @@
       "id": "collector01",
       "type": "collector",
       "label": "COLLECTOR-01",
+      "zone": "demo",
       "vendor": "Ubuntu 24.04",
       "managementIp": "10.10.30.10",
-      "position": { "x": 660, "y": 480 },
+      "position": { "x": 640, "y": 400 },
       "interfaces": [
         { "name": "ens3", "side": "top", "speedMbps": 1000 }
+      ]
+    },
+
+    {
+      "id": "acc-c1",
+      "type": "switch",
+      "label": "ACC-C DC-1",
+      "zone": "datacenter",
+      "vendor": "Cisco Nexus 93180",
+      "managementIp": "10.40.1.11",
+      "position": { "x": 80, "y": 680 },
+      "interfaces": [
+        { "name": "Eth1/1", "ifIndex": 1, "side": "top", "speedMbps": 10000 },
+        { "name": "Eth1/10", "ifIndex": 10, "side": "bottom", "speedMbps": 10000 },
+        { "name": "Eth1/11", "ifIndex": 11, "side": "bottom", "speedMbps": 10000 },
+        { "name": "Eth1/12", "ifIndex": 12, "side": "right", "speedMbps": 10000 }
+      ]
+    },
+    {
+      "id": "acc-c2",
+      "type": "switch",
+      "label": "ACC-C DC-2",
+      "zone": "datacenter",
+      "vendor": "Cisco Nexus 93180",
+      "managementIp": "10.40.2.11",
+      "position": { "x": 320, "y": 680 },
+      "interfaces": [
+        { "name": "Eth1/1", "ifIndex": 1, "side": "left", "speedMbps": 10000 },
+        { "name": "Eth1/10", "ifIndex": 10, "side": "bottom", "speedMbps": 10000 },
+        { "name": "Eth1/11", "ifIndex": 11, "side": "bottom", "speedMbps": 10000 }
+      ]
+    },
+    {
+      "id": "erp01",
+      "type": "server",
+      "label": "ERP-01",
+      "zone": "datacenter",
+      "vendor": "RHEL 9",
+      "managementIp": "10.40.10.10",
+      "position": { "x": -80, "y": 880 },
+      "interfaces": [{ "name": "eth0", "side": "top", "speedMbps": 10000 }]
+    },
+    {
+      "id": "db01",
+      "type": "server",
+      "label": "DB-01",
+      "zone": "datacenter",
+      "vendor": "RHEL 9",
+      "managementIp": "10.40.10.20",
+      "position": { "x": 120, "y": 880 },
+      "interfaces": [{ "name": "eth0", "side": "top", "speedMbps": 10000 }]
+    },
+    {
+      "id": "ldap01",
+      "type": "server",
+      "label": "LDAP-01",
+      "zone": "datacenter",
+      "vendor": "Ubuntu 24.04",
+      "managementIp": "10.40.10.30",
+      "position": { "x": 320, "y": 880 },
+      "interfaces": [{ "name": "eth0", "side": "top", "speedMbps": 10000 }]
+    },
+    {
+      "id": "backup01",
+      "type": "server",
+      "label": "BACKUP-01",
+      "zone": "datacenter",
+      "vendor": "Ubuntu 24.04",
+      "managementIp": "10.40.10.40",
+      "position": { "x": 520, "y": 880 },
+      "interfaces": [{ "name": "eth0", "side": "top", "speedMbps": 10000 }]
+    },
+    {
+      "id": "collector02",
+      "type": "collector",
+      "label": "COLLECTOR-02",
+      "zone": "datacenter",
+      "vendor": "Ubuntu 24.04",
+      "managementIp": "10.40.10.60",
+      "position": { "x": 720, "y": 880 },
+      "interfaces": [
+        { "name": "ens3", "side": "left", "speedMbps": 1000 }
       ]
     }
   ],
@@ -66,10 +387,49 @@
     { "id": "link-r1-sw1", "source": "r1", "sourcePort": "Gi0/0", "target": "sw1", "targetPort": "Gi0/1", "role": "uplink" },
     { "id": "link-r1-sw2", "source": "r1", "sourcePort": "Gi0/1", "target": "sw2", "targetPort": "Gi0/1", "role": "uplink" },
     { "id": "link-sw1-app01", "source": "sw1", "sourcePort": "Gi0/3", "target": "app01", "targetPort": "eth0", "role": "access" },
-    { "id": "link-sw2-collector01", "source": "sw2", "sourcePort": "Gi0/3", "target": "collector01", "targetPort": "ens3", "role": "access" }
+    { "id": "link-sw2-collector01", "source": "sw2", "sourcePort": "Gi0/3", "target": "collector01", "targetPort": "ens3", "role": "access" },
+
+    { "id": "link-r1-core-r2", "source": "r1", "sourcePort": "Gi0/4", "target": "core-r2", "targetPort": "Gi0/0", "role": "uplink" },
+    { "id": "link-r1-dist-a", "source": "r1", "sourcePort": "Gi0/2", "target": "dist-a", "targetPort": "Te1/0/1", "role": "uplink" },
+    { "id": "link-r1-dist-b", "source": "r1", "sourcePort": "Gi0/3", "target": "dist-b", "targetPort": "Ethernet1", "role": "uplink" },
+    { "id": "link-r1-fw1", "source": "r1", "sourcePort": "Gi0/5", "target": "fw1", "targetPort": "port1", "role": "uplink" },
+
+    { "id": "link-core-r2-dist-a", "source": "core-r2", "sourcePort": "Gi0/1", "target": "dist-a", "targetPort": "Te1/0/2", "role": "uplink" },
+    { "id": "link-core-r2-dist-b", "source": "core-r2", "sourcePort": "Gi0/2", "target": "dist-b", "targetPort": "Ethernet2", "role": "uplink" },
+    { "id": "link-core-r2-wan", "source": "core-r2", "sourcePort": "Gi0/3", "target": "wan-r1", "targetPort": "Gi0/0", "role": "uplink" },
+    { "id": "link-fw1-wan", "source": "fw1", "sourcePort": "port2", "target": "wan-r1", "targetPort": "Gi0/1", "role": "uplink" },
+    { "id": "link-fw1-dmz", "source": "fw1", "sourcePort": "port3", "target": "dmz-sw1", "targetPort": "Gi1/0/1", "role": "access" },
+
+    { "id": "link-dist-a-acc-a1", "source": "dist-a", "sourcePort": "Gi1/0/1", "target": "acc-a1", "targetPort": "Gi1/0/1", "role": "access" },
+    { "id": "link-dist-a-acc-a2", "source": "dist-a", "sourcePort": "Gi1/0/2", "target": "acc-a2", "targetPort": "Gi1/0/1", "role": "access" },
+    { "id": "link-dist-a-acc-a3", "source": "dist-a", "sourcePort": "Gi1/0/3", "target": "acc-a3", "targetPort": "ge-0/0/0", "role": "access" },
+    { "id": "link-dist-a-acc-c1", "source": "dist-a", "sourcePort": "Gi1/0/4", "target": "acc-c1", "targetPort": "Eth1/1", "role": "access" },
+
+    { "id": "link-dist-b-acc-b1", "source": "dist-b", "sourcePort": "Ethernet11", "target": "acc-b1", "targetPort": "Gi1/0/1", "role": "access" },
+    { "id": "link-dist-b-acc-b2", "source": "dist-b", "sourcePort": "Ethernet12", "target": "acc-b2", "targetPort": "Ethernet1", "role": "access" },
+    { "id": "link-dist-b-acc-b3", "source": "dist-b", "sourcePort": "Ethernet13", "target": "acc-b3", "targetPort": "Gi1/0/1", "role": "access" },
+    { "id": "link-dist-b-wlc", "source": "dist-b", "sourcePort": "Ethernet14", "target": "wlc1", "targetPort": "Gi0/0/1", "role": "access" },
+
+    { "id": "link-acc-c1-erp01", "source": "acc-c1", "sourcePort": "Eth1/10", "target": "erp01", "targetPort": "eth0", "role": "access" },
+    { "id": "link-acc-c1-db01", "source": "acc-c1", "sourcePort": "Eth1/11", "target": "db01", "targetPort": "eth0", "role": "access" },
+    { "id": "link-acc-c1-acc-c2", "source": "acc-c1", "sourcePort": "Eth1/12", "target": "acc-c2", "targetPort": "Eth1/1", "role": "uplink" },
+    { "id": "link-acc-c2-ldap01", "source": "acc-c2", "sourcePort": "Eth1/10", "target": "ldap01", "targetPort": "eth0", "role": "access" },
+    { "id": "link-acc-c2-backup01", "source": "acc-c2", "sourcePort": "Eth1/11", "target": "backup01", "targetPort": "eth0", "role": "access" },
+
+    { "id": "link-acc-b1-mail01", "source": "acc-b1", "sourcePort": "Gi1/0/48", "target": "mail01", "targetPort": "eth0", "role": "access" },
+    { "id": "link-acc-b2-files01", "source": "acc-b2", "sourcePort": "Ethernet48", "target": "files01", "targetPort": "eth0", "role": "access" },
+    { "id": "link-dmz-web", "source": "dmz-sw1", "sourcePort": "Gi1/0/10", "target": "web-dmz01", "targetPort": "eth0", "role": "access" },
+
+    { "id": "link-acc-a1-mon01", "source": "acc-a1", "sourcePort": "Gi1/0/48", "target": "mon01", "targetPort": "eth0", "role": "access" },
+    { "id": "link-mon01-collector02", "source": "mon01", "sourcePort": "eth1", "target": "collector02", "targetPort": "ens3", "role": "access" }
   ],
   "services": [
     { "id": "svc-dns", "label": "Internal DNS", "host": "app01", "port": 53, "dependsOn": [] },
-    { "id": "svc-web", "label": "Web Application", "host": "app01", "port": 80, "dependsOn": ["svc-dns"] }
+    { "id": "svc-web", "label": "Web Application", "host": "app01", "port": 80, "dependsOn": ["svc-dns"] },
+    { "id": "svc-erp", "label": "ERP Portal", "host": "erp01", "port": 443, "dependsOn": ["svc-dns", "svc-ldap"] },
+    { "id": "svc-ldap", "label": "Directory (LDAP)", "host": "ldap01", "port": 389, "dependsOn": ["svc-dns"] },
+    { "id": "svc-mail", "label": "Corporate Mail", "host": "mail01", "port": 25, "dependsOn": ["svc-dns", "svc-ldap"] },
+    { "id": "svc-files", "label": "File Shares", "host": "files01", "port": 445, "dependsOn": ["svc-dns", "svc-ldap"] },
+    { "id": "svc-public-web", "label": "Public Website", "host": "web-dmz01", "port": 443, "dependsOn": [] }
   ]
 }

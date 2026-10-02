@@ -16,6 +16,8 @@ export interface TopoNode {
   id: string;
   type: NodeType;
   label: string;
+  /** Campus zone / building id for map coloring (e.g. building-a, datacenter). */
+  zone?: string;
   vendor?: string;
   managementIp: string;
   position: { x: number; y: number };
