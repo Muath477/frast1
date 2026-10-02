@@ -178,12 +178,20 @@ export interface VendorProblem {
   fixes: VendorFix[];
 }
 
+export interface AiReference {
+  text: string;
+  source: 'llm' | string;
+  gap: string;
+  agent?: string;
+}
+
 export interface VendorContext {
   rootEntity: string;
   kind: string;
   devices: VendorDevice[];
   problems: VendorProblem[];
   known: number;
+  aiReference?: AiReference | null;
 }
 
 export interface ActionPlan {
@@ -257,7 +265,11 @@ export interface Incident {
   acknowledgedBy?: string | null;
   acknowledgedAt?: string | null;
   verification?: Verification | null;
-  knowledge?: { similar: KnowledgeHit[]; references: KnowledgeHit[] } | null;
+  knowledge?: {
+    similar: KnowledgeHit[];
+    references: KnowledgeHit[];
+    aiReference?: AiReference | null;
+  } | null;
   vendorContext?: VendorContext | null;
   timings: {
     injectedAt?: string;
