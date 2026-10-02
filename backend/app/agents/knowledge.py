@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 
+from app.llm.reference import advise
 from app.rag.index import KnowledgeIndex
 
 from .base import Agent
@@ -75,21 +76,44 @@ class KnowledgeAgent(Agent):
         async with self.step("retrieve_context", inc.id) as st:
             self.ensure_loaded()
             label = (inc.root_cause or {}).get("label") or root_id
-            metrics = " ".join(sorted({a.metric for a in inc.anomalies}))
+            metric_list = sorted({a.metric for a in inc.anomalies})
+            metrics = " ".join(metric_list)
             query = f"{label} {root_id} {metrics} runbook remediation"
             similar = [
                 h for h in self.index.search(query, k=4, kinds={"incident", "postmortem"})
                 if not h["id"].startswith((f"incident:{inc.id}", f"postmortem:{inc.id}"))
             ][:3]
             refs = self.index.search(query, k=3, kinds={"doc", "playbook", "topology"})
+            ai_ref = None
+            if not similar and not refs:
+                conf = round(float((inc.root_cause or {}).get("confidence") or 0) * 100)
+                ai_ref = await advise(
+                    "knowledge",
+                    "no_kb_hit",
+                    {
+                        "rootId": root_id,
+                        "label": label,
+                        "metrics": metric_list,
+                        "conf": conf,
+                        "anomalyCount": len(inc.anomalies),
+                    },
+                )
             out = {
                 "similar": [_public(h) for h in similar],
                 "references": [_public(h) for h in refs],
+                "aiReference": ai_ref,
             }
             st.data = {
                 "similar": [h["id"] for h in similar],
                 "references": [h["id"] for h in refs],
+                "aiReference": bool(ai_ref),
             }
-            st.decision = "similar_found" if similar else "no_similar"
-            st.summary = f"{len(similar)} similar past incident(s), {len(refs)} reference passage(s)"
+            if ai_ref:
+                st.decision = "ai_reference"
+            else:
+                st.decision = "similar_found" if similar else "no_similar"
+            st.summary = (
+                f"{len(similar)} similar past incident(s), {len(refs)} reference passage(s)"
+                + (" — AI reference attached" if ai_ref else "")
+            )
         return out

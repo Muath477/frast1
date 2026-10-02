@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 
 from app.knowledge import get_kb
+from app.llm.reference import advise
 from app.rag.index import normalize
 
 from .base import Agent
@@ -233,15 +234,37 @@ class VendorAgent(Agent):
         async with self.step("enrich_incident", inc.id) as st:
             metrics = sorted({a.metric for a in inc.anomalies})
             ctx = self.build_context(root_id, metrics)
+            ai_ref = None
+            if not ctx["problems"] or ctx["known"] == 0:
+                gap = "unknown_vendor" if ctx["known"] == 0 else "no_known_problem"
+                ai_ref = await advise(
+                    "vendor",
+                    gap,
+                    {
+                        "rootId": root_id,
+                        "kind": ctx["kind"],
+                        "metrics": metrics,
+                        "known": ctx["known"],
+                        "deviceCount": len(ctx["devices"]),
+                        "devices": [d["id"] for d in ctx["devices"]],
+                        "vendors": [d["vendor"] for d in ctx["devices"] if d.get("vendor")],
+                    },
+                )
+            ctx["aiReference"] = ai_ref
             st.data = {
                 "devices": [f"{d['id']}:{d['vendor'] or '?'}/{d['os'] or '?'}" for d in ctx["devices"]],
                 "problems": [p["id"] for p in ctx["problems"]],
+                "aiReference": bool(ai_ref),
             }
-            st.decision = ctx["problems"][0]["id"] if ctx["problems"] else "no_known_problem"
+            if ai_ref:
+                st.decision = "ai_reference"
+            else:
+                st.decision = ctx["problems"][0]["id"] if ctx["problems"] else "no_known_problem"
             st.summary = (
                 f"{ctx['known']}/{len(ctx['devices'])} device(s) identified, "
                 f"{len(ctx['problems'])} known problem pattern(s) matched"
                 + (f" — top: {ctx['problems'][0]['title']}" if ctx["problems"] else "")
+                + (" — AI reference attached" if ai_ref else "")
             )
         return ctx
 

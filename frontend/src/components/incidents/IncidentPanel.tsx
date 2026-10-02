@@ -250,6 +250,30 @@ export function IncidentPanel({ incident, onClose }: Props) {
               </section>
             )}
 
+            {(incident.knowledge?.aiReference || incident.vendorContext?.aiReference) && (
+              <section data-testid="ai-reference">
+                <h3 className="mb-2 text-xs uppercase tracking-wider text-slate-500">AI reference</h3>
+                <div className="space-y-2">
+                  {incident.knowledge?.aiReference && (
+                    <div className="rounded border border-info/30 bg-info/5 px-2.5 py-2 text-xs text-slate-300">
+                      <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-info">
+                        knowledge · {incident.knowledge.aiReference.gap}
+                      </div>
+                      <p className="leading-relaxed">{incident.knowledge.aiReference.text}</p>
+                    </div>
+                  )}
+                  {incident.vendorContext?.aiReference && (
+                    <div className="rounded border border-info/30 bg-info/5 px-2.5 py-2 text-xs text-slate-300">
+                      <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-info">
+                        vendor · {incident.vendorContext.aiReference.gap}
+                      </div>
+                      <p className="leading-relaxed">{incident.vendorContext.aiReference.text}</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
             <div className="flex items-center justify-between text-[11px] text-slate-500">
               {incident.acknowledgedBy ? (
                 <span>Acknowledged by {incident.acknowledgedBy}</span>
