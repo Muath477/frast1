@@ -24,3 +24,13 @@ test-results/
 training/data/external/*
 !training/data/external/README.md
 training/**/__pycache__/
+
+# AI assistant files
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+.claude/
+.cursor/
+.cursorrules
+.windsurfrules
+.github/copilot-instructions.md
