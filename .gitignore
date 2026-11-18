@@ -34,3 +34,4 @@ training/**/__pycache__/
 .cursorrules
 .windsurfrules
 .github/copilot-instructions.md
+.github/agents/
